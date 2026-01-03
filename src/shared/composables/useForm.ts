@@ -3,7 +3,7 @@
  * Manages form state, validation, and API error handling
  */
 
-import { ref, computed, reactive, type Ref, type ComputedRef } from 'vue'
+import { ref, computed, shallowReactive, type Ref, type ComputedRef } from 'vue'
 import type { ApiError } from '@/core/api/types'
 import type { Validator } from '../utils/validators'
 import { useField, type UseFieldReturn } from './useField'
@@ -52,7 +52,7 @@ export function useForm(options: UseFormOptions): UseFormReturn {
   } = options
 
   // Initialize fields
-  const fields: Record<string, UseFieldReturn> = reactive({})
+  const fields: Record<string, UseFieldReturn> = shallowReactive({})
   for (const config of fieldConfigs) {
     fields[config.name] = useField({
       initialValue: config.initialValue,
@@ -289,4 +289,3 @@ export function useForm(options: UseFormOptions): UseFormReturn {
     clearErrors,
   }
 }
-
