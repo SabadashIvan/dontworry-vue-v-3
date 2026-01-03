@@ -7,6 +7,7 @@ import type { NavigationGuardNext, RouteLocationNormalized } from 'vue-router'
 import { useAuthStore } from '@/stores/core/auth'
 import { useTenantContextStore } from '@/stores/core/tenant-context'
 import { redirectToCentral } from '@/core/tenancy/redirect'
+import { getCentralDomains } from '@/core/tenancy/resolver'
 import { tenantApi } from '@/core/api/tenant'
 import type { ApiError } from '@/core/api/types'
 
@@ -69,9 +70,7 @@ export async function requiresTenant(
     // Only redirect if we're not already going to a central route
     if (!to.path.startsWith('/tenants/select') && !to.path.startsWith('/login')) {
       // Check if we're actually on central domain before redirecting
-      const centralDomains = (import.meta.env.VITE_CENTRAL_DOMAINS || 'localhost,127.0.0.1')
-        .split(',')
-        .map((d: string) => d.trim())
+      const centralDomains = getCentralDomains()
 
       console.log('[requiresTenant] Central domains:', centralDomains, 'Current hostname:', hostname)
 
@@ -127,9 +126,7 @@ export async function requiresTenant(
       }
 
       const hostname = window.location.hostname
-      const centralDomains = (import.meta.env.VITE_CENTRAL_DOMAINS || 'localhost,127.0.0.1')
-        .split(',')
-        .map((d: string) => d.trim())
+      const centralDomains = getCentralDomains()
 
       if (centralDomains.includes(hostname)) {
         // Already on central, use router redirect
@@ -168,11 +165,10 @@ export function requiresCentral(
   const tenantContextStore = useTenantContextStore()
 
   if (tenantContextStore.isTenantHost) {
-    // Redirect to tenant dashboard
-    next({ name: 'dashboard' })
+    // Redirect to central domain for central-only routes
+    redirectToCentral(to.fullPath)
     return
   }
 
   next()
 }
-
