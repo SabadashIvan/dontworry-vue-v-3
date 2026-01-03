@@ -60,14 +60,37 @@ export interface TenantUser {
 }
 
 /**
+ * Tenant Domain type (from API response)
+ */
+export interface TenantDomain {
+  id: number
+  domain: string
+  tenant_id: number
+}
+
+/**
  * Tenant type
  */
 export interface Tenant {
   id: number
   title: string
-  domain: string
+  domain: string | TenantDomain
   timezone?: string
   created_at: string
   updated_at: string
+}
+
+/**
+ * Extract domain string from tenant domain field
+ * Handles both string and object formats from API
+ */
+export function getTenantDomainString(domain: string | TenantDomain | undefined): string {
+  if (!domain) {
+    return ''
+  }
+  if (typeof domain === 'string') {
+    return domain
+  }
+  return domain.domain || ''
 }
 

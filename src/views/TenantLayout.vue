@@ -5,13 +5,13 @@
         <h2>DontWorry</h2>
       </div>
       <nav class="sidebar-nav">
-        <router-link to="/app/dashboard" class="nav-item">Dashboard</router-link>
-        <router-link to="/app/projects" class="nav-item">Projects</router-link>
-        <router-link to="/app/websites" class="nav-item">Websites</router-link>
-        <router-link to="/app/checks" class="nav-item">Checks</router-link>
-        <router-link to="/app/reports" class="nav-item">Reports</router-link>
-        <router-link to="/app/notifications" class="nav-item">Notifications</router-link>
-        <router-link to="/app/settings/profile" class="nav-item">Settings</router-link>
+        <router-link to="/dashboard" class="nav-item">Dashboard</router-link>
+        <router-link to="/projects" class="nav-item">Projects</router-link>
+        <router-link to="/websites" class="nav-item">Websites</router-link>
+        <router-link to="/checks" class="nav-item">Checks</router-link>
+        <router-link to="/reports" class="nav-item">Reports</router-link>
+        <router-link to="/notifications" class="nav-item">Notifications</router-link>
+        <router-link to="/settings/profile" class="nav-item">Settings</router-link>
       </nav>
       <div class="sidebar-footer">
         <button @click="handleLogout" class="logout-btn">Logout</button>

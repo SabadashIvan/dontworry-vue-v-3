@@ -23,26 +23,26 @@ todos:
       - forms-validation
   - id: tenant-store
     content: "Реализовать tenants store для управления тенантами: fetchTenants, createTenant, updateTenant, deleteTenant"
-    status: pending
+    status: completed
     dependencies:
       - ui-components-base
   - id: tenant-form
     content: "Создать TenantForm.vue для создания/редактирования тенанта с полями: title, domain, timezone"
-    status: pending
+    status: completed
     dependencies:
       - tenant-store
       - forms-validation
       - ui-components-base
   - id: tenant-select-view
     content: "Реализовать TenantSelectView: список тенантов, выбор тенанта, переход на subdomain, создание нового тенанта"
-    status: pending
+    status: completed
     dependencies:
       - tenant-store
       - tenant-form
       - ui-components-advanced
   - id: tenant-list-view
     content: "Реализовать TenantListView для центрального режима: таблица тенантов, CRUD операции, управление"
-    status: pending
+    status: completed
     dependencies:
       - tenant-store
       - tenant-form
@@ -65,15 +65,15 @@ todos:
       - file-upload
   - id: monitoring-types
     content: Создать типы для Monitoring модуля (Checker, Check, Report, CheckerService)
-    status: pending
+    status: completed
   - id: monitoring-stores
     content: "Реализовать stores для Monitoring: checkers, checks, reports"
-    status: pending
+    status: completed
     dependencies:
       - monitoring-types
   - id: monitoring-views
     content: "Создать views и компоненты для Monitoring: ChecksList, CheckForm, CheckConfigForm, ReportsList, ReportDetails"
-    status: pending
+    status: completed
     dependencies:
       - monitoring-stores
       - workspace-views
@@ -112,7 +112,7 @@ todos:
       - forms-validation
   - id: tenant-management
     content: Реализовать TenantListView и InvitationView для центрального режима (уже включено в этап 4)
-    status: pending
+    status: completed
     dependencies:
       - tenant-list-view
       - ui-components-advanced
@@ -129,6 +129,47 @@ todos:
 ## Обзор
 
 После завершения core архитектуры необходимо реализовать функциональные модули приложения. План включает создание UI компонентов, feature-модулей (Workspace, Monitoring, Notifications) и вспомогательных систем (формы, валидация, загрузка файлов).
+
+## Прогресс реализации
+
+### ✅ Завершено
+
+1. **UI Components Library** - все базовые и продвинутые компоненты реализованы
+2. **Forms & Validation** - система форм, валидации и FormField компонент
+3. **File Upload** - компонент загрузки файлов с drag & drop
+4. **Tenant Management & Selection** - полностью реализовано:
+
+- Tenants store с CRUD операциями
+- TenantForm для создания/редактирования
+- TenantSelectView с выбором и созданием тенантов
+- TenantListView для центрального режима
+- Redirect helpers для навигации между доменами
+- InvitationView для принятия приглашений
+
+5. **Workspace Module** - полностью реализовано:
+
+- Типы и интерфейсы
+- Stores для clients, directories, websites, pages
+- Views и компоненты (ProjectsList, ProjectDetail, WebsitesList, DirectoryTree, PagesList)
+
+6. **UI Store Extension** - расширен для toast, modals, loading states
+7. **Monitoring Module** - полностью реализовано:
+
+- Типы и интерфейсы ✅
+- Stores (checkers, checks, reports) ✅
+- Views и компоненты (ChecksListView, CheckForm, CheckConfigForm, ReportsListView, ReportDetails) ✅
+
+### 🔄 В процессе / Ожидает реализации
+
+1. **Notifications Module** - не начато:
+
+- Типы и интерфейсы
+- Stores (notifications, preferences, telegram)
+- Views и компоненты
+
+3. **Dashboard Integration** - placeholder реализован, требуется доработка
+4. **Profile Settings** - placeholder реализован, требуется доработка
+5. **Error Handling** - централизованная обработка ошибок не реализована
 
 ## Архитектура модулей
 
@@ -162,6 +203,8 @@ flowchart TB
     Support --> Monitoring
     Support --> Notifications
 ```
+
+
 
 ## Этап 1: UI Components Library
 
@@ -292,11 +335,11 @@ flowchart TB
 
 - State: список тенантов, текущий тенант, loading
 - Actions:
-  - `fetchTenants()` - GET /v1/tenants (central API)
-  - `fetchTenant(id)` - GET /v1/tenants/{id}
-  - `createTenant(data)` - POST /v1/tenants
-  - `updateTenant(id, data)` - PUT /v1/tenants/{id}
-  - `deleteTenant(id)` - DELETE /v1/tenants/{id}
+- `fetchTenants()` - GET /v1/tenants (central API)
+- `fetchTenant(id)` - GET /v1/tenants/{id}
+- `createTenant(data)` - POST /v1/tenants
+- `updateTenant(id, data)` - PUT /v1/tenants/{id}
+- `deleteTenant(id)` - DELETE /v1/tenants/{id}
 - Getters: `tenants`, `currentTenant`
 
 **Особенности:**
@@ -310,13 +353,13 @@ flowchart TB
 **Файл:** `src/features/tenants/components/TenantForm.vue`
 
 - Поля:
-  - `title` (required, string) - название workspace
-  - `domain` (required, string) - subdomain (валидация: только латиница, цифры, дефисы)
-  - `timezone` (optional, string) - часовой пояс
+- `title` (required, string) - название workspace
+- `domain` (required, string) - subdomain (валидация: только латиница, цифры, дефисы)
+- `timezone` (optional, string) - часовой пояс
 - Валидация:
-  - title: required, minLength(3), maxLength(255)
-  - domain: required, pattern для subdomain (a-z0-9-), minLength(2), maxLength(63)
-  - timezone: опционально, валидация формата timezone
+- title: required, minLength(3), maxLength(255)
+- domain: required, pattern для subdomain (a-z0-9-), minLength(2), maxLength(63)
+- timezone: опционально, валидация формата timezone
 - Использование `useForm` для управления формой
 
 ### 4.3 Tenant Selection View
@@ -355,17 +398,18 @@ flowchart TB
 
 ### 4.5 Tenant Context & Navigation
 
-**Файл:** `src/core/tenancy/redirect.ts` (расширение или создание)
+**Файл:** `src/core/tenancy/redirect.ts` ✅ **РЕАЛИЗОВАНО**
 
-- Функция `redirectToTenant(domain: string)` для перехода на subdomain
-- Логика построения URL: `https://{domain}.{baseDomain}`
-- Сохранение текущего пути для редиректа после входа в тенант
+- Функция `redirectToTenant(domain: string)` для перехода на subdomain ✅
+- Логика построения URL: `https://{domain}.{baseDomain}` ✅
+- Функция `buildTenantUrl()` для построения URL ✅
+- Функция `redirectToCentral()` для возврата на центральный домен ✅
 
 **Интеграция:**
 
-- После успешного выбора тенанта в `TenantSelectView`
-- После создания нового тенанта
-- Из `TenantListView` при клике на "Switch to Tenant"
+- После успешного выбора тенанта в `TenantSelectView` ✅
+- После создания нового тенанта ✅
+- Из `TenantListView` при клике на "Switch to Tenant" ✅
 
 ## Этап 5: Workspace Module
 
@@ -446,72 +490,74 @@ flowchart TB
 
 ## Этап 5: Monitoring Module
 
-### 5.1 Типы и интерфейсы
+### 5.1 Типы и интерфейсы ✅ **РЕАЛИЗОВАНО**
 
-**Файл:** `src/features/monitoring/types.ts`
+**Файл:** `src/features/monitoring/types.ts` ✅
 
-- `Checker`, `Check`, `Report`
-- `CheckerService` enum
-- `CheckConfig`, `ReportFields`
+- `Checker`, `Check`, `Report` ✅
+- `CheckerService` type ✅
+- `ConfigField`, `ResultField`, `ReportField`, `JobDTO` ✅
+- DTO типы (CheckerCreateDTO, CheckerUpdateDTO, CheckCreateDTO, CheckUpdateDTO) ✅
 
-### 5.2 Stores
+### 5.2 Stores ✅ **РЕАЛИЗОВАНО**
 
-**Файл:** `src/stores/monitoring/checkers.ts`
+**Файл:** `src/stores/monitoring/checkers.ts` ✅
 
-- State: список чекеров, текущий чекер, loading
-- Actions: `fetchCheckers()`, `fetchChecker(id)`, `createChecker(data)`, `updateChecker(id, data)`, `deleteChecker(id)`
-- Получение `config_fields` и `result_fields`
+- State: список чекеров, текущий чекер, loading ✅
+- Actions: `fetchCheckers()`, `fetchChecker(id)`, `createChecker(data)`, `updateChecker(id, data)`, `deleteChecker(id)` ✅
+- Получение `config_fields` и `result_fields` при `fetchChecker()` ✅
 
-**Файл:** `src/stores/monitoring/checks.ts`
+**Файл:** `src/stores/monitoring/checks.ts` ✅
 
-- State: список чеков, текущий чек, loading, runHistory
-- Actions: `fetchChecks(clientId?)`, `fetchCheck(id)`, `createCheck(data)`, `updateCheck(id, data)`, `deleteCheck(id)`, `runCheck(id)`, `fetchRunHistory(id?)`
-- Привязка к страницам через `page_ids`
+- State: список чеков, текущий чек, loading, runHistoryByCheckId ✅
+- Actions: `fetchChecks(clientId?)`, `fetchCheck(id)`, `createCheck(data)`, `updateCheck(id, data)`, `deleteCheck(id)`, `runCheck(id)`, `fetchRunHistory()`, `fetchItemRunHistory(id)` ✅
+- Привязка к страницам через `page_ids` ✅
 
-**Файл:** `src/stores/monitoring/reports.ts`
+**Файл:** `src/stores/monitoring/reports.ts` ✅
 
-- State: список отчетов, текущий отчет, loading, filters
-- Actions: `fetchReports(filters?)`, `fetchReport(id)`, `deleteReport(id)`
-- Фильтрация по check, page, website, client
+- State: список отчетов, текущий отчет, loading, filters ✅
+- Actions: `fetchReports(filters?)`, `fetchReport(id)`, `deleteReport(id)`, `setFilters()`, `clearFilters()` ✅
+- Фильтрация по check, page, website, client ✅
 
-### 5.3 Views и компоненты
+### 5.3 Views и компоненты ✅ **РЕАЛИЗОВАНО**
 
-**Файл:** `src/views/ChecksListView.vue`
+**Файл:** `src/views/ChecksListView.vue` ✅
 
-- Список чеков с фильтрацией
-- Создание чека
-- Действия: редактировать, запустить, удалить, просмотреть историю
+- Список чеков с фильтрацией по проекту ✅
+- Создание/редактирование чека через модальное окно ✅
+- Действия: редактировать, запустить, удалить, просмотреть историю ✅
+- Таблица с колонками: Title, Checker, Project, Status, Actions ✅
 
-**Файл:** `src/features/monitoring/components/CheckForm.vue`
+**Файл:** `src/features/monitoring/components/CheckForm.vue` ✅
 
-- Форма создания/редактирования чека
-- Выбор checker (с загрузкой config_fields)
-- Динамическая форма конфигурации на основе `config_fields`
-- Выбор страниц (multi-select)
-- Переключатель `is_active`
+- Форма создания/редактирования чека ✅
+- Выбор checker (с загрузкой config_fields) ✅
+- Динамическая форма конфигурации на основе `config_fields` ✅
+- Выбор страниц (multi-select) с фильтрацией по проекту ✅
+- Переключатель `is_active` ✅
+- Интеграция с CheckConfigForm ✅
 
-**Файл:** `src/features/monitoring/components/CheckConfigForm.vue`
+**Файл:** `src/features/monitoring/components/CheckConfigForm.vue` ✅
 
-- Динамическая форма на основе `config_fields` checker
-- Типы полей: integer, boolean, select, string
-- Валидация на основе схемы
+- Динамическая форма на основе `config_fields` checker ✅
+- Типы полей: integer, boolean, select, string ✅
+- Автоматическая инициализация значений из defaults ✅
+- Отображение hints (cron, timeout, verify_ssl) ✅
 
-**Файл:** `src/views/ReportsListView.vue`
+**Файл:** `src/views/ReportsListView.vue` ✅
 
-- Список отчетов с фильтрацией
-- Таблица с колонками: Check, Page, Website, Status, Date
-- Фильтры: по check, page, website, client, дате
-- Действия: просмотреть детали, удалить
+- Список отчетов с фильтрацией ✅
+- Таблица с колонками: Check, Page, Status, Date, Actions ✅
+- Фильтры: по check, page, website, client ✅
+- Пагинация ✅
+- Действия: просмотреть детали, удалить ✅
 
-**Файл:** `src/features/monitoring/components/ReportDetails.vue`
+**Файл:** `src/features/monitoring/components/ReportDetails.vue` ✅
 
-- Детальный просмотр отчета
-- Отображение `report_fields` с цветовой индикацией
-- История выполнения
-
-**Файл:** `src/features/monitoring/components/CheckerSelector.vue`
-
-- Выбор checker с отображением service и описания
+- Детальный просмотр отчета ✅
+- Отображение `report_fields` с цветовой индикацией ✅
+- Информация о check, page, website ✅
+- Fallback на raw result, если report_fields отсутствует ✅
 
 ## Этап 7: Notifications Module
 
@@ -610,10 +656,12 @@ flowchart TB
 - Создание tenant
 - Редактирование/удаление
 
-**Файл:** `src/views/InvitationView.vue`
+**Файл:** `src/views/InvitationView.vue` ✅ **РЕАЛИЗОВАНО (базовая версия)**
 
-- Просмотр приглашения
-- Принятие приглашения
+- Просмотр приглашения ✅
+- Принятие приглашения ✅
+- Загрузка приглашения по токену ✅
+- Обработка ошибок ✅
 
 ### 8.4 Error Handling
 
@@ -627,23 +675,17 @@ flowchart TB
 
 1. **Tenant Selection & Navigation**: 
 
-   - Создание тенанта происходит на центральном домене через `centralApi`
-   - После создания/выбора тенанта - переход на subdomain через `redirectToTenant()`
-   - Все tenant-scoped endpoints требуют вызова на tenant subdomain через `tenantApi`
-   - Проверка наличия тенанта перед доступом к workspace/monitoring/notifications
+- Создание тенанта происходит на центральном домене через `centralApi`
+- После создания/выбора тенанта - переход на subdomain через `redirectToTenant()`
+- Все tenant-scoped endpoints требуют вызова на tenant subdomain через `tenantApi`
+- Проверка наличия тенанта перед доступом к workspace/monitoring/notifications
 
 2. **File Upload**: Использовать `multipart/form-data` для загрузки аватаров (Client, Tenant User)
-
 3. **Dynamic Forms**: Формы конфигурации чеков строятся динамически на основе `config_fields` от backend
-
 4. **Pagination**: Все списковые endpoints поддерживают пагинацию через `meta.paginator`
-
 5. **Tenant Context**: Все tenant endpoints требуют вызова на tenant subdomain
-
 6. **Subscription Limits**: Обработка ошибок при достижении лимитов (например, max_websites)
-
 7. **Avatar Handling**: После обновления аватара необходимо перезагружать данные, т.к. avatar добавляется только в read endpoints
-
 8. **Domain Validation**: При создании тенанта валидировать domain на уникальность и формат subdomain (a-z0-9-, 2-63 символа)
 
 ## Порядок реализации
@@ -655,17 +697,9 @@ flowchart TB
 3. **File Upload** (нужно для аватаров)
 4. **Tenant Management & Selection** (критически важно - нужно для работы с workspace)
 
-   - Создание тенанта
-   - Выбор тенанта и переход на subdomain
-   - Управление тенантами
+- Создание тенанта
+- Выбор тенанта и переход на subdomain
+- Управление тенантами
 
 5. **Workspace Module** (основной функционал, требует выбранный тенант)
 6. **Monitoring Module** (зависит от Workspace)
-7. **Notifications Module** (независимый)
-8. **Интеграция и улучшения**
-
-## Тестирование
-
-После каждого этапа проверить:
-
-- [ ] Компоненты отображаются корректно

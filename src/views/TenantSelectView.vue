@@ -41,7 +41,7 @@
       >
         <div class="tenant-card-content">
           <h3>{{ tenant.title }}</h3>
-          <p class="domain">{{ tenant.domain }}</p>
+          <p class="domain">{{ getTenantDomainString(tenant.domain) }}</p>
           <p v-if="tenant.timezone" class="timezone">{{ tenant.timezone }}</p>
         </div>
       </Card>
@@ -71,6 +71,7 @@ import Modal from '@/shared/ui/Modal.vue'
 import Spinner from '@/shared/ui/Spinner.vue'
 import TenantForm from '@/features/tenants/components/TenantForm.vue'
 import type { Tenant } from '@/core/api/types'
+import { getTenantDomainString } from '@/core/api/types'
 import type { TenantCreateDTO, TenantUpdateDTO } from '@/stores/core/tenants'
 
 const tenantsStore = useTenantsStore()
@@ -107,16 +108,25 @@ async function loadTenants() {
 }
 
 function selectTenant(tenant: Tenant) {
+  // Extract domain string
+  const domainString = getTenantDomainString(tenant.domain)
+
+  // Validate domain before redirect
+  if (!domainString) {
+    console.error('Cannot redirect: tenant domain is missing', tenant)
+    return
+  }
+
   // Set tenant context
   tenantContextStore.setTenantFromTenantsList({
     id: tenant.id,
     title: tenant.title,
-    domain: tenant.domain,
+    domain: domainString,
     timezone: tenant.timezone,
   })
 
-  // Redirect to tenant subdomain
-  redirectToTenant(tenant.domain, '/app')
+  // Redirect to tenant subdomain dashboard
+  redirectToTenant(domainString, '/dashboard')
 }
 
 async function handleFormSubmit(data: TenantCreateDTO | TenantUpdateDTO) {
@@ -128,9 +138,16 @@ async function handleFormSubmit(data: TenantCreateDTO | TenantUpdateDTO) {
       // After creating, redirect to the new tenant
       showFormModal.value = false
       editingTenant.value = null
+      // Extract domain string (use form data as fallback)
+      const domainString = getTenantDomainString(tenant.domain) || (data as TenantCreateDTO).domain
+      if (!domainString) {
+        console.error('Domain is missing from tenant response and form data')
+        return
+      }
       // Small delay to ensure tenant is created
       setTimeout(() => {
-        selectTenant(tenant)
+        // Create a tenant object with guaranteed domain string for redirect
+        selectTenant({ ...tenant, domain: domainString })
       }, 100)
       return
     }

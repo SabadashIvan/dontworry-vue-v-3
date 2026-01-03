@@ -190,4 +190,3 @@ interface TenantUpdateDTO {
 ## Зависимости
 
 - UI Components Library ✓
-- Forms & Validation ✓

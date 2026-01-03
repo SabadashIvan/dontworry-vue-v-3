@@ -53,6 +53,7 @@ import Select from '@/shared/ui/Select.vue'
 import FormField from '@/shared/ui/FormField.vue'
 import Button from '@/shared/ui/Button.vue'
 import type { Tenant } from '@/core/api/types'
+import { getTenantDomainString } from '@/core/api/types'
 import type { TenantCreateDTO, TenantUpdateDTO } from '@/stores/core/tenants'
 import type { SelectOption } from '@/shared/ui/Select.vue'
 
@@ -111,7 +112,7 @@ const timezoneOptions = computed<SelectOption[]>(() => {
 
 // Local input values for reactive binding
 const titleInput = ref<string>(props.tenant?.title || '')
-const domainInput = ref<string>(props.tenant?.domain || '')
+const domainInput = ref<string>(getTenantDomainString(props.tenant?.domain) || '')
 const timezoneInput = ref<string | number>(props.tenant?.timezone || '')
 
 // Initialize form
@@ -125,7 +126,7 @@ const { fields, errors, isSubmitting, isValid, values, submit: submitForm } = us
     },
     {
       name: 'domain',
-      initialValue: props.tenant?.domain || '',
+      initialValue: getTenantDomainString(props.tenant?.domain) || '',
       validators: [
         compose(
           required('Domain is required'),

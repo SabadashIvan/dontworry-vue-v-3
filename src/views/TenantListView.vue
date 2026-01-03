@@ -55,7 +55,8 @@ import Table from '@/shared/ui/Table.vue'
 import Button from '@/shared/ui/Button.vue'
 import Modal from '@/shared/ui/Modal.vue'
 import TenantForm from '@/features/tenants/components/TenantForm.vue'
-import type { Tenant } from '@/core/api/types'
+import type { Tenant, TenantDomain } from '@/core/api/types'
+import { getTenantDomainString } from '@/core/api/types'
 import type { TenantCreateDTO, TenantUpdateDTO } from '@/stores/core/tenants'
 import type { TableColumn } from '@/shared/ui/Table.vue'
 
@@ -82,6 +83,9 @@ const columns = computed<TableColumn[]>(() => [
     key: 'domain',
     label: 'Domain',
     sortable: false,
+    formatter: (value) => {
+      return getTenantDomainString(value as string | TenantDomain) || '-'
+    },
   },
   {
     key: 'timezone',
@@ -126,16 +130,24 @@ function handleEdit(tenant: Tenant) {
 }
 
 function handleSwitch(tenant: Tenant) {
+  // Extract domain string
+  const domainString = getTenantDomainString(tenant.domain)
+
+  if (!domainString) {
+    console.error('Cannot redirect: tenant domain is missing', tenant)
+    return
+  }
+
   // Set tenant context
   tenantContextStore.setTenantFromTenantsList({
     id: tenant.id,
     title: tenant.title,
-    domain: tenant.domain,
+    domain: domainString,
     timezone: tenant.timezone,
   })
 
   // Redirect to tenant subdomain
-  redirectToTenant(tenant.domain, '/app')
+  redirectToTenant(domainString, '/dashboard')
 }
 
 async function handleDelete(tenant: Tenant) {

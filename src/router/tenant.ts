@@ -7,10 +7,10 @@ import type { RouteRecordRaw } from 'vue-router'
 
 const tenantRoutes: RouteRecordRaw[] = [
   {
-    path: '/app',
-    name: 'tenant-dashboard',
+    path: '/',
+    name: 'tenant-layout',
     component: () => import('@/views/TenantLayout.vue'),
-    redirect: '/app/dashboard',
+    redirect: '/dashboard',
     meta: {
       requiresAuth: true,
       requiresTenant: true,
@@ -20,6 +20,10 @@ const tenantRoutes: RouteRecordRaw[] = [
         path: 'dashboard',
         name: 'dashboard',
         component: () => import('@/views/DashboardView.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresTenant: true,
+        },
       },
       {
         path: 'projects',

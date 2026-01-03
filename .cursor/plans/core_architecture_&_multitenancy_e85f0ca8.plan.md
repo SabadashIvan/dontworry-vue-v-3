@@ -411,4 +411,3 @@ flowchart TB
 - [ ] Login flow с сохранением token
 - [ ] Redirect на tenant subdomain при выборе workspace
 - [ ] Tenant API calls идут на правильный host
-- [ ] Router guards блокируют неавторизованный доступ

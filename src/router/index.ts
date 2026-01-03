@@ -26,7 +26,7 @@ const router = createRouter({
         if (centralDomains.includes(hostname)) {
           return '/login'
         } else {
-          return '/app'
+          return '/dashboard'
         }
       },
     },
@@ -46,34 +46,45 @@ router.beforeEach(
     next: NavigationGuardNext
   ) => {
     const meta = to.meta || {}
+    let guardRedirected = false
+
+    // Wrapper to track if guard redirected
+    const trackedNext: NavigationGuardNext = ((...args: Parameters<NavigationGuardNext>) => {
+      if (args.length > 0) {
+        guardRedirected = true
+      }
+      return next(...args)
+    }) as NavigationGuardNext
 
     // Apply guards based on route meta
     if (meta.requiresAuth) {
-      await requiresAuth(to, from, next)
+      await requiresAuth(to, from, trackedNext)
       // If requiresAuth redirected, stop here
-      if (!to.matched.length) {
+      if (guardRedirected || !to.matched.length) {
         return
       }
     }
 
     if (meta.requiresTenant) {
-      await requiresTenant(to, from, next)
+      await requiresTenant(to, from, trackedNext)
       // If requiresTenant redirected, stop here
-      if (!to.matched.length) {
+      if (guardRedirected || !to.matched.length) {
         return
       }
     }
 
     if (meta.requiresCentral) {
-      requiresCentral(to, from, next)
+      requiresCentral(to, from, trackedNext)
       // If requiresCentral redirected, stop here
-      if (!to.matched.length) {
+      if (guardRedirected || !to.matched.length) {
         return
       }
     }
 
-    // No guards or all passed
-    next()
+    // No guards or all passed - only call next if no guard redirected
+    if (!guardRedirected) {
+      next()
+    }
   }
 )
 
