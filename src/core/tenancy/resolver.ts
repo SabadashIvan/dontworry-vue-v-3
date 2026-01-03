@@ -36,17 +36,22 @@ export function extractSubdomain(hostname: string): string | null {
 /**
  * Get list of central domains from environment
  */
-function getCentralDomains(): string[] {
+export function getCentralDomains(): string[] {
   const envValue = import.meta.env.VITE_CENTRAL_DOMAINS
-  if (!envValue) {
-    // Default fallback
-    return ['localhost', '127.0.0.1']
+  const centralHost = import.meta.env.VITE_CENTRAL_HOST
+
+  const domains = envValue
+    ? (envValue as string)
+      .split(',')
+      .map(domain => domain.trim())
+      .filter(domain => domain.length > 0)
+    : ['localhost', '127.0.0.1']
+
+  if (centralHost && !domains.includes(centralHost)) {
+    domains.unshift(centralHost)
   }
 
-  return (envValue as string)
-    .split(',')
-    .map(domain => domain.trim())
-    .filter(domain => domain.length > 0)
+  return Array.from(new Set(domains))
 }
 
 /**
@@ -67,4 +72,3 @@ export function getTenantSubdomain(): string | null {
 
   return extractSubdomain(window.location.hostname)
 }
-

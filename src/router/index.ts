@@ -8,6 +8,7 @@ import type { RouteLocationNormalized, NavigationGuardNext } from 'vue-router'
 import centralRoutes from './central'
 import tenantRoutes from './tenant'
 import { requiresAuth, requiresTenant, requiresCentral } from './guards'
+import { getCentralDomains } from '@/core/tenancy/resolver'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -19,9 +20,7 @@ const router = createRouter({
       redirect: () => {
         // Determine redirect based on app mode
         const hostname = window.location.hostname
-        const centralDomains = (import.meta.env.VITE_CENTRAL_DOMAINS || 'localhost,127.0.0.1')
-          .split(',')
-          .map((d: string) => d.trim())
+        const centralDomains = getCentralDomains()
 
         if (centralDomains.includes(hostname)) {
           return '/login'
