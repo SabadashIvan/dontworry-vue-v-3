@@ -3,7 +3,7 @@
  * Determines application mode (central/tenant) and builds API base URLs
  */
 
-import { isCentralHost } from './resolver'
+import { getCentralDomains, isCentralHost } from './resolver'
 
 /**
  * Application mode
@@ -49,7 +49,8 @@ export function getApiBaseUrl(mode: AppMode): string {
   if (mode === 'central') {
     // Central API can use dedicated host or current hostname
     const centralHost = import.meta.env.VITE_CENTRAL_HOST
-    const host = centralHost || window.location.hostname
+    const fallbackHost = getCentralDomains()[0]
+    const host = centralHost || fallbackHost || window.location.hostname
     return `${scheme}://${host}:${port}${pathPrefix}`
   } else {
     // Tenant API must use current hostname (tenant subdomain)
@@ -65,4 +66,3 @@ export function getCurrentApiBaseUrl(): string {
   const mode = getAppMode()
   return getApiBaseUrl(mode)
 }
-
