@@ -165,8 +165,8 @@ export function requiresCentral(
   const tenantContextStore = useTenantContextStore()
 
   if (tenantContextStore.isTenantHost) {
-    // Redirect to tenant dashboard
-    next({ name: 'dashboard' })
+    // Redirect to central domain for central-only routes
+    redirectToCentral(to.fullPath)
     return
   }
 
