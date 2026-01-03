@@ -19,5 +19,31 @@ export default defineConfigWithVueTs(
   ...pluginVue.configs['flat/essential'],
   vueTsConfigs.recommended,
 
+  {
+    rules: {
+      // Allow single-word component names for base UI components
+      'vue/multi-word-component-names': [
+        'error',
+        {
+          ignores: [
+            'Button',
+            'Input',
+            'Select',
+            'Checkbox',
+            'Radio',
+            'Card',
+            'Badge',
+            'Spinner',
+            'Modal',
+            'Table',
+            'Toast',
+            'Container',
+            'PageHeader',
+          ],
+        },
+      ],
+    },
+  },
+
   skipFormatting,
 )
