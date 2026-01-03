@@ -4,6 +4,7 @@
  */
 
 import { isCentralHost } from './resolver'
+import { normalizeHostname } from './hostname'
 
 /**
  * Extract base domain from a hostname
@@ -13,7 +14,8 @@ import { isCentralHost } from './resolver'
  * Example: "tenant1.dontworry.cloud" -> "dontworry.cloud"
  */
 function extractBaseDomain(hostname: string): string {
-  const parts = hostname.split('.')
+  const normalizedHostname = normalizeHostname(hostname)
+  const parts = normalizedHostname.split('.')
 
   // Single part (localhost, 127.0.0.1) - already base domain
   if (parts.length === 1) {
@@ -23,7 +25,7 @@ function extractBaseDomain(hostname: string): string {
   // For 2 parts, check if it's a known central domain
   // If it's a central domain without subdomain (e.g., "dontworry.cloud"), use it as is
   if (parts.length === 2 && isCentralHost(hostname)) {
-    return hostname
+    return normalizedHostname
   }
 
   // For 2 parts where first is subdomain (e.g., "app.dontworry.cloud" or "tenant.localhost")
@@ -118,4 +120,3 @@ export function redirectToCentral(path: string = ''): void {
   console.log('[redirectToCentral] Redirecting to central domain', { from: currentUrl, to: url })
   window.location.href = url
 }
-
