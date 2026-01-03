@@ -54,6 +54,8 @@ import FormField from '@/shared/ui/FormField.vue'
 import Button from '@/shared/ui/Button.vue'
 import type { Tenant } from '@/core/api/types'
 import { getTenantDomainString } from '@/core/api/types'
+import { isCentralHost } from '@/core/tenancy/resolver'
+import { normalizeHostname } from '@/core/tenancy/hostname'
 import type { TenantCreateDTO, TenantUpdateDTO } from '@/stores/core/tenants'
 import type { SelectOption } from '@/shared/ui/Select.vue'
 
@@ -77,10 +79,16 @@ const domainPattern = /^[a-z0-9-]+$/
 
 // Get base domain for preview
 const baseDomain = computed(() => {
-  const hostname = window.location.hostname
+  const hostname = normalizeHostname(window.location.hostname)
   const parts = hostname.split('.')
   if (parts.length === 1) {
     return parts[0] || 'localhost'
+  }
+  if (parts.length === 2 && isCentralHost(hostname)) {
+    return hostname
+  }
+  if (parts.length === 2) {
+    return parts[1] || 'localhost'
   }
   return parts.slice(1).join('.') || 'localhost'
 })
@@ -348,4 +356,3 @@ async function handleSubmit() {
   font-weight: 600;
 }
 </style>
-

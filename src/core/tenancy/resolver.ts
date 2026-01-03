@@ -3,14 +3,18 @@
  * Extracts tenant subdomain and determines host type
  */
 
+import { normalizeHostname } from './hostname'
+
 /**
  * Extract subdomain from hostname
  * Example: "acme.dontworry.test" -> "acme"
  * Example: "localhost" -> null
  */
 export function extractSubdomain(hostname: string): string | null {
+  const normalizedHostname = normalizeHostname(hostname)
+
   // Split by dot
-  const parts = hostname.split('.')
+  const parts = normalizedHostname.split('.')
 
   // If only one part (e.g., "localhost"), no subdomain
   if (parts.length <= 1) {
@@ -23,7 +27,7 @@ export function extractSubdomain(hostname: string): string | null {
 
   // Check if first part is a known central domain
   const centralDomains = getCentralDomains()
-  const isCentralDomain = centralDomains.includes(hostname)
+  const isCentralDomain = centralDomains.includes(normalizedHostname)
 
   if (isCentralDomain) {
     return null
@@ -43,12 +47,14 @@ export function getCentralDomains(): string[] {
   const domains = envValue
     ? (envValue as string)
       .split(',')
-      .map(domain => domain.trim())
+      .map(domain => normalizeHostname(domain))
       .filter(domain => domain.length > 0)
     : ['localhost', '127.0.0.1']
 
-  if (centralHost && !domains.includes(centralHost)) {
-    domains.unshift(centralHost)
+  const normalizedCentralHost = centralHost ? normalizeHostname(centralHost) : ''
+
+  if (normalizedCentralHost && !domains.includes(normalizedCentralHost)) {
+    domains.unshift(normalizedCentralHost)
   }
 
   return Array.from(new Set(domains))
@@ -58,8 +64,9 @@ export function getCentralDomains(): string[] {
  * Check if hostname is a central domain
  */
 export function isCentralHost(hostname: string): boolean {
+  const normalizedHostname = normalizeHostname(hostname)
   const centralDomains = getCentralDomains()
-  return centralDomains.includes(hostname)
+  return centralDomains.includes(normalizedHostname)
 }
 
 /**

@@ -3,6 +3,8 @@
  * Handles storage and retrieval of Sanctum Bearer token
  */
 
+import { normalizeHostname } from '@/core/tenancy/hostname'
+
 const TOKEN_STORAGE_KEY = 'dontworry_auth_token'
 
 function getCookieDomain(): string | null {
@@ -11,7 +13,7 @@ function getCookieDomain(): string | null {
   }
 
   const centralHost = import.meta.env.VITE_CENTRAL_HOST
-  const hostname = centralHost || window.location.hostname
+  const hostname = normalizeHostname(centralHost || window.location.hostname)
   const parts = hostname.split('.')
 
   if (parts.length <= 1) {
