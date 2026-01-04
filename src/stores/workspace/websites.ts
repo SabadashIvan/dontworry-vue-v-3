@@ -8,11 +8,17 @@ import { ref } from 'vue'
 import { tenantApi } from '@/core/api/tenant'
 import { extractData } from '@/core/api/client'
 import { useUiStore } from '@/stores/core/ui'
-import type { ApiResponse, ApiError } from '@/core/api/types'
+import type { ApiResponse, ApiError, PaginatorMeta } from '@/core/api/types'
 import type { Website, WebsiteCreateDTO, WebsiteUpdateDTO } from '@/features/workspace/types'
+
+interface ListParams {
+  page?: number
+  perPage?: number
+}
 
 interface ListCache {
   ids: number[]
+  paginator?: PaginatorMeta
   fetchedAt: number
 }
 
@@ -27,27 +33,31 @@ export const useWebsitesStore = defineStore('workspace/websites', () => {
   /**
    * Get list cache key
    */
-  function getListKey(clientId?: number, directoryId?: number): string {
-    return JSON.stringify({ clientId, directoryId })
+  function getListKey(clientId?: number, directoryId?: number, params?: ListParams): string {
+    return JSON.stringify({ clientId, directoryId, ...params })
   }
 
   /**
    * Fetch websites
    */
-  async function fetchWebsites(clientId?: number, directoryId?: number): Promise<Website[]> {
+  async function fetchWebsites(clientId?: number, directoryId?: number, params?: ListParams): Promise<Website[]> {
     loading.value = true
     error.value = null
 
     try {
-      const params: Record<string, unknown> = {}
-      if (clientId) params.client_id = clientId
-      if (directoryId) params.directory_id = directoryId
+      const requestParams: Record<string, unknown> = {
+        page: params?.page || 1,
+        per_page: params?.perPage || 20,
+      }
+      if (clientId) requestParams.client_id = clientId
+      if (directoryId) requestParams.directory_id = directoryId
 
       const response = await tenantApi.get<ApiResponse<Website[]>>('/workspace/websites', {
-        params,
+        params: requestParams,
       })
 
       const data = extractData(response)
+      const paginator = response.data.meta?.paginator
 
       // Normalize and store
       const ids: number[] = []
@@ -57,9 +67,10 @@ export const useWebsitesStore = defineStore('workspace/websites', () => {
       }
 
       // Cache list
-      const listKey = getListKey(clientId, directoryId)
+      const listKey = getListKey(clientId, directoryId, params)
       lists.value[listKey] = {
         ids,
+        paginator,
         fetchedAt: Date.now(),
       }
 
@@ -228,7 +239,7 @@ export const useWebsitesStore = defineStore('workspace/websites', () => {
         currentWebsite.value = null
       }
 
-      // Invalidate all lists
+      // Invalidate all lists (or just lists containing this website if we track it)
       lists.value = {}
 
       uiStore.showToast('Website deleted successfully', 'success')

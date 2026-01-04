@@ -5,13 +5,7 @@
         <h2>DontWorry</h2>
       </div>
       <nav class="sidebar-nav">
-        <router-link to="/dashboard" class="nav-item">Dashboard</router-link>
-        <router-link to="/projects" class="nav-item">Projects</router-link>
-        <router-link to="/websites" class="nav-item">Websites</router-link>
-        <router-link to="/checks" class="nav-item">Checks</router-link>
-        <router-link to="/reports" class="nav-item">Reports</router-link>
-        <router-link to="/notifications" class="nav-item">Notifications</router-link>
-        <router-link to="/settings/profile" class="nav-item">Settings</router-link>
+        <ClientsSidebar />
       </nav>
       <div class="sidebar-footer">
         <button @click="handleLogout" class="logout-btn">Logout</button>
@@ -25,6 +19,7 @@
 
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/core/auth'
+import ClientsSidebar from '@/features/workspace/components/ClientsSidebar.vue'
 
 const authStore = useAuthStore()
 

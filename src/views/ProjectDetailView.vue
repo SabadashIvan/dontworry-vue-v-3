@@ -43,48 +43,25 @@
         </Card>
       </div>
 
-      <div class="project-tabs">
-        <div class="tabs-header">
-          <button
-            :class="['tab-button', { active: activeTab === 'overview' }]"
-            @click="activeTab = 'overview'"
-          >
-            Overview
-          </button>
-          <button
-            :class="['tab-button', { active: activeTab === 'websites' }]"
-            @click="activeTab = 'websites'"
-          >
-            Websites
-          </button>
-          <button
-            :class="['tab-button', { active: activeTab === 'directories' }]"
-            @click="activeTab = 'directories'"
-          >
-            Directories
-          </button>
+      <div class="project-sections">
+        <div class="section">
+          <div class="section-header">
+            <h2 class="section-title">Folders</h2>
+            <Button variant="primary" @click="showDirectoryFormModal = true">Add Folder</Button>
+          </div>
+          <Card>
+            <DirectoriesGrid :client-id="client.id" />
+          </Card>
         </div>
 
-        <div class="tabs-content">
-          <div v-if="activeTab === 'overview'" class="tab-panel">
-            <Card>
-              <h3>Project Information</h3>
-              <dl class="info-list">
-                <dt>Created</dt>
-                <dd>{{ formatDate(client.created_at) }}</dd>
-                <dt>Last Updated</dt>
-                <dd>{{ formatDate(client.updated_at) }}</dd>
-              </dl>
-            </Card>
+        <div class="section">
+          <div class="section-header">
+            <h2 class="section-title">Websites</h2>
+            <Button variant="primary" @click="showWebsiteFormModal = true">Add Website</Button>
           </div>
-
-          <div v-if="activeTab === 'websites'" class="tab-panel">
-            <WebsitesList :client-id="client.id" />
-          </div>
-
-          <div v-if="activeTab === 'directories'" class="tab-panel">
-            <DirectoryTree :client-id="client.id" />
-          </div>
+          <Card>
+            <WebsitesList :client-id="client.id" @edit="handleWebsiteEdit" @view-pages="handleViewPages" @delete="handleWebsiteDelete" />
+          </Card>
         </div>
       </div>
     </div>
@@ -109,6 +86,26 @@
         <Button variant="ghost" @click="showAvatarModal = false">Cancel</Button>
         <Button :loading="uploadingAvatar" @click="handleUploadAvatar">Upload</Button>
       </div>
+    </Modal>
+
+    <Modal v-model="showDirectoryFormModal" :title="editingDirectory ? 'Edit Folder' : 'Add Folder'" size="md">
+      <DirectoryForm
+        :directory="editingDirectory"
+        :client-id="clientId"
+        :is-edit="!!editingDirectory"
+        @submit="handleDirectoryFormSubmit"
+        @cancel="showDirectoryFormModal = false; editingDirectory = null"
+      />
+    </Modal>
+
+    <Modal v-model="showWebsiteFormModal" :title="editingWebsite ? 'Edit Website' : 'Add Website'" size="md">
+      <WebsiteForm
+        :website="editingWebsite"
+        :is-edit="!!editingWebsite"
+        :initial-client-id="editingWebsite ? undefined : clientId"
+        @submit="handleWebsiteFormSubmit"
+        @cancel="showWebsiteFormModal = false; editingWebsite = null"
+      />
     </Modal>
   </Container>
 
@@ -136,17 +133,26 @@ import Modal from '@/shared/ui/Modal.vue'
 import FileUpload from '@/shared/ui/FileUpload.vue'
 import Spinner from '@/shared/ui/Spinner.vue'
 import ProjectForm from '@/features/workspace/components/ProjectForm.vue'
-import DirectoryTree from '@/features/workspace/components/DirectoryTree.vue'
+import DirectoriesGrid from '@/features/workspace/components/DirectoriesGrid.vue'
+import DirectoryForm from '@/features/workspace/components/DirectoryForm.vue'
 import WebsitesList from '@/features/workspace/components/WebsitesList.vue'
-import type { Client, ClientUpdateDTO } from '@/features/workspace/types'
+import WebsiteForm from '@/features/workspace/components/WebsiteForm.vue'
+import { useDirectoriesStore } from '@/stores/workspace/directories'
+import { useWebsitesStore } from '@/stores/workspace/websites'
+import type { ClientUpdateDTO, Directory, DirectoryCreateDTO, DirectoryUpdateDTO, Website, WebsiteCreateDTO, WebsiteUpdateDTO } from '@/features/workspace/types'
 
 const route = useRoute()
 const router = useRouter()
 const clientsStore = useClientsStore()
+const directoriesStore = useDirectoriesStore()
+const websitesStore = useWebsitesStore()
 
-const activeTab = ref<'overview' | 'websites' | 'directories'>('overview')
 const showEditModal = ref(false)
 const showAvatarModal = ref(false)
+const showDirectoryFormModal = ref(false)
+const showWebsiteFormModal = ref(false)
+const editingDirectory = ref<Directory | null>(null)
+const editingWebsite = ref<Website | null>(null)
 const avatarFile = ref<File | null>(null)
 const uploadingAvatar = ref(false)
 
@@ -156,11 +162,9 @@ const loading = computed(() => clientsStore.loading)
 
 onMounted(async () => {
   await clientsStore.fetchClient(clientId.value)
+  await directoriesStore.fetchDirectories(clientId.value)
+  await websitesStore.fetchWebsites(clientId.value)
 })
-
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString()
-}
 
 async function handleDeleteAvatar() {
   if (confirm('Are you sure you want to delete the avatar?')) {
@@ -172,7 +176,7 @@ async function handleFormSubmit(data: ClientUpdateDTO, avatarFile?: File) {
   try {
     await clientsStore.updateClient(clientId.value, data, avatarFile)
     showEditModal.value = false
-  } catch (error) {
+  } catch {
     // Error handling is done in store
   }
 }
@@ -189,10 +193,59 @@ async function handleUploadAvatar() {
     await clientsStore.updateClient(clientId.value, {}, avatarFile.value)
     showAvatarModal.value = false
     avatarFile.value = null
-  } catch (error) {
+  } catch {
     // Error handling is done in store
   } finally {
     uploadingAvatar.value = false
+  }
+}
+
+// Navigation is handled in DirectoriesGrid component
+// handleDirectoryClick handler removed as it's not used
+
+async function handleDirectoryFormSubmit(data: DirectoryCreateDTO | DirectoryUpdateDTO) {
+  try {
+    if (editingDirectory.value) {
+      await directoriesStore.updateDirectory(editingDirectory.value.id, data)
+    } else {
+      await directoriesStore.createDirectory(data as DirectoryCreateDTO)
+    }
+    showDirectoryFormModal.value = false
+    editingDirectory.value = null
+    await directoriesStore.fetchDirectories(clientId.value)
+  } catch {
+    // Error handling is done in store
+  }
+}
+
+function handleWebsiteEdit(website: Website) {
+  editingWebsite.value = website
+  showWebsiteFormModal.value = true
+}
+
+function handleViewPages(website: Website) {
+  router.push(`/websites/${website.id}`)
+}
+
+async function handleWebsiteDelete(website: Website) {
+  if (confirm(`Are you sure you want to delete "${website.host}"?`)) {
+    await websitesStore.deleteWebsite(website.id)
+    await websitesStore.fetchWebsites(clientId.value)
+  }
+}
+
+async function handleWebsiteFormSubmit(data: WebsiteCreateDTO | WebsiteUpdateDTO) {
+  try {
+    if (editingWebsite.value) {
+      await websitesStore.updateWebsite(editingWebsite.value.id, data)
+    } else {
+      await websitesStore.createWebsite(data as WebsiteCreateDTO)
+    }
+    showWebsiteFormModal.value = false
+    editingWebsite.value = null
+    await websitesStore.fetchWebsites(clientId.value)
+  } catch {
+    // Error handling is done in store
   }
 }
 </script>
@@ -256,41 +309,26 @@ async function handleUploadAvatar() {
   gap: 8px;
 }
 
-.project-tabs {
+.project-sections {
   margin-top: 24px;
 }
 
-.tabs-header {
+.section {
+  margin-bottom: 32px;
+}
+
+.section-header {
   display: flex;
-  gap: 8px;
-  border-bottom: 2px solid #e0e0e0;
-  margin-bottom: 24px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
 }
 
-.tab-button {
-  padding: 12px 24px;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 500;
-  color: #666;
-  transition: all 0.2s ease;
-}
-
-.tab-button:hover {
+.section-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
   color: #333;
-}
-
-.tab-button.active {
-  color: #007bff;
-  border-bottom-color: #007bff;
-}
-
-.tabs-content {
-  min-height: 200px;
 }
 
 .info-list {

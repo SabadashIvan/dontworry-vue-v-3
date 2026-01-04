@@ -16,19 +16,21 @@
       <div class="filters">
         <FormField label="Filter by Project">
           <Select
-            v-model="selectedClientId"
+            :model-value="selectedClientId ?? (undefined as unknown as number)"
             :options="clientOptions"
             placeholder="All projects"
+            @update:model-value="selectedClientId = ($event === undefined || $event === null) ? undefined : (typeof $event === 'number' ? $event : undefined)"
             @change="handleFilterChange"
           />
         </FormField>
 
         <FormField label="Filter by Directory">
           <Select
-            v-model="selectedDirectoryId"
+            :model-value="selectedDirectoryId ?? (undefined as unknown as number)"
             :options="directoryOptions"
             placeholder="All directories"
             :disabled="!selectedClientId"
+            @update:model-value="selectedDirectoryId = ($event === undefined || $event === null) ? undefined : (typeof $event === 'number' ? $event : undefined)"
             @change="handleFilterChange"
           />
         </FormField>
@@ -36,18 +38,40 @@
 
       <Table
         :columns="columns"
-        :data="websites"
+        :data="(websites as unknown) as Record<string, unknown>[]"
         :loading="loading"
         empty-text="No websites yet. Create one to get started."
       >
         <template #cell-actions="{ row }">
           <div class="actions-cell">
-            <Button size="sm" variant="ghost" @click="handleEdit(row)">Edit</Button>
-            <Button size="sm" variant="ghost" @click="handleViewPages(row)">Pages</Button>
-            <Button size="sm" variant="danger" @click="handleDelete(row)">Delete</Button>
+            <Button size="sm" variant="ghost" @click="handleEdit(row as unknown as Website)">Edit</Button>
+            <Button size="sm" variant="ghost" @click="handleViewPages(row as unknown as Website)">Pages</Button>
+            <Button size="sm" variant="danger" @click="handleDelete(row as unknown as Website)">Delete</Button>
           </div>
         </template>
       </Table>
+
+      <div v-if="paginator && paginator.last_page > 1" class="pagination">
+        <Button
+          :disabled="paginator.current_page === 1"
+          variant="ghost"
+          size="sm"
+          @click="loadPage(paginator.current_page - 1)"
+        >
+          Previous
+        </Button>
+        <span class="pagination-info">
+          Page {{ paginator.current_page }} of {{ paginator.last_page }}
+        </span>
+        <Button
+          :disabled="paginator.current_page === paginator.last_page"
+          variant="ghost"
+          size="sm"
+          @click="loadPage(paginator.current_page + 1)"
+        >
+          Next
+        </Button>
+      </div>
     </Card>
 
     <Modal v-model="showFormModal" :title="formTitle" size="md">
@@ -79,6 +103,7 @@ import WebsiteForm from '@/features/workspace/components/WebsiteForm.vue'
 import type { Website, WebsiteCreateDTO, WebsiteUpdateDTO } from '@/features/workspace/types'
 import type { TableColumn } from '@/shared/ui/Table.vue'
 import type { SelectOption } from '@/shared/ui/Select.vue'
+import type { PaginatorMeta } from '@/core/api/types'
 
 const router = useRouter()
 const websitesStore = useWebsitesStore()
@@ -89,14 +114,30 @@ const showFormModal = ref(false)
 const editingWebsite = ref<Website | null>(null)
 const selectedClientId = ref<number | undefined>(undefined)
 const selectedDirectoryId = ref<number | undefined>(undefined)
+const currentPage = ref(1)
 
 const loading = computed(() => websitesStore.loading)
 const websites = computed(() => {
-  return Object.values(websitesStore.byId).filter((website) => {
-    if (selectedClientId.value && website.client_id !== selectedClientId.value) return false
-    if (selectedDirectoryId.value && website.directory_id !== selectedDirectoryId.value) return false
-    return true
+  const listKey = JSON.stringify({
+    clientId: selectedClientId.value,
+    directoryId: selectedDirectoryId.value,
+    page: currentPage.value,
+    perPage: 20,
   })
+  const list = websitesStore.lists[listKey]
+  if (!list) return []
+  return list.ids.map((id) => websitesStore.byId[id]).filter((w): w is Website => w !== undefined)
+})
+
+const paginator = computed<PaginatorMeta | undefined>(() => {
+  const listKey = JSON.stringify({
+    clientId: selectedClientId.value,
+    directoryId: selectedDirectoryId.value,
+    page: currentPage.value,
+    perPage: 20,
+  })
+  const list = websitesStore.lists[listKey]
+  return list?.paginator
 })
 
 const formTitle = computed(() => {
@@ -105,7 +146,7 @@ const formTitle = computed(() => {
 
 const clientOptions = computed<SelectOption[]>(() => {
   return [
-    { label: 'All projects', value: undefined },
+    { label: 'All projects', value: undefined as unknown as number },
     ...clientsStore.clients.map((client) => ({
       label: client.title,
       value: client.id,
@@ -123,7 +164,7 @@ const directoryOptions = computed<SelectOption[]>(() => {
   )
 
   return [
-    { label: 'All directories', value: undefined },
+    { label: 'All directories', value: undefined as unknown as number },
     ...directories.map((directory) => ({
       label: directory.title,
       value: directory.id,
@@ -142,7 +183,7 @@ const columns = computed<TableColumn[]>(() => [
     label: 'Project',
     sortable: false,
     formatter: (value, row) => {
-      const website = row as Website
+      const website = row as unknown as Website
       const client = clientsStore.byId[website.client_id]
       return client?.title || `Project ${website.client_id}`
     },
@@ -152,7 +193,7 @@ const columns = computed<TableColumn[]>(() => [
     label: 'Directory',
     sortable: false,
     formatter: (value, row) => {
-      const website = row as Website
+      const website = row as unknown as Website
       if (!website.directory_id) return '-'
       const directory = directoriesStore.byId[website.directory_id]
       return directory?.title || `Directory ${website.directory_id}`
@@ -167,7 +208,7 @@ const columns = computed<TableColumn[]>(() => [
 ])
 
 onMounted(async () => {
-  await websitesStore.fetchWebsites()
+  await loadPage(1)
   if (clientsStore.clients.length === 0) {
     await clientsStore.fetchClients()
   }
@@ -181,8 +222,14 @@ watch(selectedClientId, async (clientId) => {
   await handleFilterChange()
 })
 
+async function loadPage(page: number) {
+  currentPage.value = page
+  await websitesStore.fetchWebsites(selectedClientId.value, selectedDirectoryId.value, { page, perPage: 20 })
+}
+
 async function handleFilterChange() {
-  await websitesStore.fetchWebsites(selectedClientId.value, selectedDirectoryId.value)
+  currentPage.value = 1
+  await loadPage(1)
 }
 
 function handleEdit(website: Website) {
@@ -191,27 +238,27 @@ function handleEdit(website: Website) {
 }
 
 function handleViewPages(website: Website) {
-  router.push(`/websites/${website.id}/pages`)
+  router.push(`/websites/${website.id}`)
 }
 
 async function handleDelete(website: Website) {
   if (confirm(`Are you sure you want to delete "${website.host}"?`)) {
     await websitesStore.deleteWebsite(website.id)
-    await handleFilterChange()
+    await loadPage(currentPage.value)
   }
 }
 
 async function handleFormSubmit(data: WebsiteCreateDTO | WebsiteUpdateDTO) {
   try {
     if (editingWebsite.value) {
-      await websitesStore.updateWebsite(editingWebsite.value.id, data)
+      await websitesStore.updateWebsite(editingWebsite.value.id, data as WebsiteUpdateDTO)
     } else {
-      await websitesStore.createWebsite(data)
+      await websitesStore.createWebsite(data as WebsiteCreateDTO)
     }
     showFormModal.value = false
     editingWebsite.value = null
-    await handleFilterChange()
-  } catch (error) {
+    await loadPage(currentPage.value)
+  } catch {
     // Error handling is done in store
   }
 }
@@ -231,5 +278,20 @@ async function handleFormSubmit(data: WebsiteCreateDTO | WebsiteUpdateDTO) {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: #666;
 }
 </style>

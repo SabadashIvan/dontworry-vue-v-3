@@ -8,12 +8,18 @@ import { ref, computed } from 'vue'
 import { tenantApi } from '@/core/api/tenant'
 import { extractData } from '@/core/api/client'
 import { useUiStore } from '@/stores/core/ui'
-import type { ApiResponse, ApiError } from '@/core/api/types'
+import type { ApiResponse, ApiError, PaginatorMeta } from '@/core/api/types'
 import type { Page, PageCreateDTO, PageUpdateDTO } from '@/features/workspace/types'
 import type { Website } from '@/features/workspace/types'
 
+interface ListParams {
+  page?: number
+  perPage?: number
+}
+
 interface ListCache {
   ids: number[]
+  paginator?: PaginatorMeta
   fetchedAt: number
 }
 
@@ -27,14 +33,14 @@ export const usePagesStore = defineStore('workspace/pages', () => {
   /**
    * Get list cache key
    */
-  function getListKey(websiteId: number): string {
-    return `website_${websiteId}`
+  function getListKey(websiteId: number, params?: ListParams): string {
+    return JSON.stringify({ websiteId, ...params })
   }
 
   /**
    * Fetch pages
    */
-  async function fetchPages(websiteId: number): Promise<Page[]> {
+  async function fetchPages(websiteId: number, params?: ListParams): Promise<Page[]> {
     loading.value = true
     error.value = null
 
@@ -42,10 +48,13 @@ export const usePagesStore = defineStore('workspace/pages', () => {
       const response = await tenantApi.get<ApiResponse<Page[]>>('/workspace/pages', {
         params: {
           website_id: websiteId,
+          page: params?.page || 1,
+          per_page: params?.perPage || 10,
         },
       })
 
       const data = extractData(response)
+      const paginator = response.data.meta?.paginator
 
       // Normalize and store
       const ids: number[] = []
@@ -55,9 +64,10 @@ export const usePagesStore = defineStore('workspace/pages', () => {
       }
 
       // Cache list
-      const listKey = getListKey(websiteId)
+      const listKey = getListKey(websiteId, params)
       lists.value[listKey] = {
         ids,
+        paginator,
         fetchedAt: Date.now(),
       }
 
@@ -91,9 +101,12 @@ export const usePagesStore = defineStore('workspace/pages', () => {
       // Store in cache
       byId.value[page.id] = page
 
-      // Invalidate list cache
-      const listKey = getListKey(data.website_id)
-      delete lists.value[listKey]
+      // Invalidate all list caches for this website
+      for (const key in lists.value) {
+        if (key.includes(`"websiteId":${data.website_id}`)) {
+          delete lists.value[key]
+        }
+      }
 
       uiStore.showToast('Page created successfully', 'success')
       return page
@@ -127,10 +140,13 @@ export const usePagesStore = defineStore('workspace/pages', () => {
       // Store in cache
       byId.value[page.id] = page
 
-      // Invalidate list cache if website_id changed
+      // Invalidate all list caches if website_id changed
       if (data.website_id) {
-        const listKey = getListKey(data.website_id)
-        delete lists.value[listKey]
+        for (const key in lists.value) {
+          if (key.includes(`"websiteId":${data.website_id}`)) {
+            delete lists.value[key]
+          }
+        }
       }
 
       uiStore.showToast('Page updated successfully', 'success')
@@ -160,10 +176,13 @@ export const usePagesStore = defineStore('workspace/pages', () => {
       // Remove from cache
       delete byId.value[id]
 
-      // Invalidate list cache
+      // Invalidate all list caches for this website
       if (page) {
-        const listKey = getListKey(page.website_id)
-        delete lists.value[listKey]
+        for (const key in lists.value) {
+          if (key.includes(`"websiteId":${page.website_id}`)) {
+            delete lists.value[key]
+          }
+        }
       }
 
       uiStore.showToast('Page deleted successfully', 'success')

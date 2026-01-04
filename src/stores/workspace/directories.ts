@@ -74,6 +74,30 @@ export const useDirectoriesStore = defineStore('workspace/directories', () => {
   }
 
   /**
+   * Fetch single directory
+   */
+  async function fetchDirectory(id: number): Promise<Directory> {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await tenantApi.get<ApiResponse<Directory>>(`/workspace/directories/${id}`)
+      const directory = extractData(response)
+
+      // Store in cache
+      byId.value[directory.id] = directory
+
+      return directory
+    } catch (err: unknown) {
+      const apiError = err as ApiError
+      error.value = apiError
+      throw apiError
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
    * Create directory
    */
   async function createDirectory(data: DirectoryCreateDTO): Promise<Directory> {
@@ -221,6 +245,7 @@ export const useDirectoriesStore = defineStore('workspace/directories', () => {
     treeByClientId,
     // Actions
     fetchDirectories,
+    fetchDirectory,
     createDirectory,
     updateDirectory,
     deleteDirectory,

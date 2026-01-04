@@ -36,9 +36,19 @@ const tenantRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/ProjectDetailView.vue'),
       },
       {
+        path: 'directories/:id',
+        name: 'directory-detail',
+        component: () => import('@/views/DirectoryDetailView.vue'),
+      },
+      {
         path: 'websites',
         name: 'websites',
         component: () => import('@/views/WebsitesListView.vue'),
+      },
+      {
+        path: 'websites/:id',
+        name: 'website-detail',
+        component: () => import('@/views/WebsiteDetailView.vue'),
       },
       {
         path: 'checks',

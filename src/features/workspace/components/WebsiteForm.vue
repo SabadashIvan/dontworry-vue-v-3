@@ -14,16 +14,17 @@
       />
     </FormField>
 
-    <FormField label="Directory" :error="errors.directory_id" hint="Optional folder for grouping">
+    <FormField label="Directory" :error="errors.directory_id" :required="!isEdit" :hint="isEdit ? 'Folder for grouping' : 'Required folder for grouping'">
       <Select
         v-if="fields.directory_id"
         id="directory_id"
         :model-value="(fields.directory_id.value.value as number | undefined) ?? (undefined as unknown as number)"
         :options="directoryOptions"
-        placeholder="Select a directory (optional)"
+        placeholder="Select a directory"
         :error="errors.directory_id || undefined"
         :disabled="!selectedClientId"
         @update:model-value="fields.directory_id.value.value = $event"
+        @blur="fields.directory_id.touched.value = true"
       />
     </FormField>
 
@@ -78,11 +79,15 @@ import type { SelectOption } from '@/shared/ui/Select.vue'
 export interface WebsiteFormProps {
   website?: Website | null
   isEdit?: boolean
+  initialClientId?: number
+  initialDirectoryId?: number
 }
 
 const props = withDefaults(defineProps<WebsiteFormProps>(), {
   website: null,
   isEdit: false,
+  initialClientId: undefined,
+  initialDirectoryId: undefined,
 })
 
 const emit = defineEmits<{
@@ -93,7 +98,7 @@ const emit = defineEmits<{
 const clientsStore = useClientsStore()
 const directoriesStore = useDirectoriesStore()
 
-const selectedClientId = ref<number | undefined>(props.website?.client_id)
+const selectedClientId = ref<number | undefined>(props.website?.client_id || props.initialClientId)
 
 // Hostname validation pattern (without protocol)
 const hostnamePattern = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/
@@ -103,13 +108,15 @@ const hostnamePattern = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA
   fields: [
     {
       name: 'client_id',
-      initialValue: props.website?.client_id || undefined,
+      initialValue: props.website?.client_id || props.initialClientId || undefined,
       validators: [required('Project is required')],
       validateOnBlur: true,
     },
     {
       name: 'directory_id',
-      initialValue: props.website?.directory_id || undefined,
+      initialValue: props.website?.directory_id || props.initialDirectoryId || undefined,
+      validators: props.isEdit ? [] : [required('Directory is required')],
+      validateOnBlur: true,
     },
     {
       name: 'host',
@@ -128,14 +135,23 @@ const hostnamePattern = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA
     },
   ],
   onSubmit: async (formValues) => {
-    const formData: WebsiteCreateDTO | WebsiteUpdateDTO = {
-      client_id: formValues.client_id as number,
-      directory_id: (formValues.directory_id as number) || (props.isEdit ? null : undefined),
-      host: formValues.host as string,
-      parse_pages: formValues.parse_pages as boolean,
+    if (props.isEdit) {
+      const formData: WebsiteUpdateDTO = {
+        client_id: formValues.client_id as number,
+        directory_id: (formValues.directory_id as number) ?? null,
+        host: formValues.host as string,
+        parse_pages: formValues.parse_pages as boolean,
+      }
+      emit('submit', formData)
+    } else {
+      const formData: WebsiteCreateDTO = {
+        client_id: formValues.client_id as number,
+        directory_id: formValues.directory_id as number,
+        host: formValues.host as string,
+        parse_pages: formValues.parse_pages as boolean,
+      }
+      emit('submit', formData)
     }
-
-    emit('submit', formData)
   },
 })
 
