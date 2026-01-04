@@ -5,6 +5,8 @@
  * The cookie is set by backend at /sanctum/csrf-cookie endpoint.
  */
 
+import { normalizeHostname } from '@/core/tenancy/hostname'
+
 const CSRF_COOKIE_NAME = 'XSRF-TOKEN'
 const CSRF_HEADER_NAME = 'X-XSRF-TOKEN'
 
@@ -43,7 +45,7 @@ export async function fetchCsrfCookie(): Promise<void> {
     // Build API base URL dynamically (same host as frontend)
     const apiScheme = import.meta.env.VITE_API_SCHEME || 'http'
     const apiPort = import.meta.env.VITE_API_PORT || '8000'
-    const currentHost = window.location.hostname || 'localhost'
+    const currentHost = normalizeHostname(window.location.hostname || 'localhost')
     apiBase = `${apiScheme}://${currentHost}:${apiPort}`
   }
 
@@ -76,4 +78,3 @@ export function getCsrfHeader(): string | null {
  * CSRF header name for axios
  */
 export const CSRF_HEADER = CSRF_HEADER_NAME
-

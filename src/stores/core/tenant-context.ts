@@ -6,6 +6,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getTenantSubdomain, isCentralHost } from '@/core/tenancy/resolver'
+import { normalizeHostname } from '@/core/tenancy/hostname'
 import { getAppMode } from '@/core/tenancy/context'
 import { redirectToTenant } from '@/core/tenancy/redirect'
 import type { AppMode } from '@/core/tenancy/context'
@@ -21,7 +22,7 @@ export const useTenantContextStore = defineStore('tenantContext', () => {
   // State
   const selectedTenant = ref<TenantInfo | null>(null)
   const centralDomain = ref<string>(
-    import.meta.env.VITE_CENTRAL_HOST || window.location.hostname
+    normalizeHostname(import.meta.env.VITE_CENTRAL_HOST || window.location.hostname)
   )
 
   // Getters
@@ -77,4 +78,3 @@ export const useTenantContextStore = defineStore('tenantContext', () => {
     redirectToTenantSubdomain,
   }
 })
-
