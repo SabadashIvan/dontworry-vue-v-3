@@ -270,6 +270,7 @@ watch(
     const clientId = typeof newClientId === 'number' ? newClientId : undefined
     selectedClientId.value = clientId
     if (clientId) {
+      await loadCheckers(clientId)
       loadingPages.value = true
       try {
         // Load websites for this client
@@ -353,28 +354,34 @@ function getPageLabel(page: Page): string {
   return `${page.title} (${page.slug})`
 }
 
+async function loadCheckers(clientId?: number) {
+  if (checkersStore.checkers.length > 0) {
+    return
+  }
+
+  loadingCheckers.value = true
+  try {
+    await checkersStore.fetchCheckers(clientId ? { clientId } : undefined)
+  } catch (error) {
+    // Handle 403 Forbidden - user may not have permission to list checkers
+    const apiError = error as { status?: number; message?: string }
+    if (apiError.status === 403) {
+      // Show error but don't block form - user might be able to select checker by ID
+      console.warn('Cannot load checkers list: insufficient permissions')
+      // Error is already shown by store's error handling
+    }
+  } finally {
+    loadingCheckers.value = false
+  }
+}
+
 // Load initial data
 onMounted(async () => {
   if (clientsStore.clients.length === 0) {
     await clientsStore.fetchClients()
   }
 
-  if (checkersStore.checkers.length === 0) {
-    loadingCheckers.value = true
-    try {
-      await checkersStore.fetchCheckers()
-    } catch (error) {
-      // Handle 403 Forbidden - user may not have permission to list checkers
-      const apiError = error as { status?: number; message?: string }
-      if (apiError.status === 403) {
-        // Show error but don't block form - user might be able to select checker by ID
-        console.warn('Cannot load checkers list: insufficient permissions')
-        // Error is already shown by store's error handling
-      }
-    } finally {
-      loadingCheckers.value = false
-    }
-  }
+  await loadCheckers(selectedClientId.value)
 
   // Load checker details if editing
   if (props.check?.checker_id && !selectedChecker.value?.config_fields) {
@@ -481,4 +488,3 @@ async function handleSubmit() {
   font-family: 'Courier New', monospace;
 }
 </style>
-
