@@ -7,7 +7,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { centralApi } from '@/core/api/central'
 import { extractData } from '@/core/api/client'
-import { saveToken, getToken, removeToken, clearAllCookies } from '@/core/auth/token'
+import { saveToken, getToken, removeToken, clearAllCookies, syncTokenToLocalStorage } from '@/core/auth/token'
 import { fetchCsrfCookie } from '@/core/auth/csrf'
 import type { CentralUser, ApiResponse, ApiError } from '@/core/api/types'
 import { redirectToCentral } from '@/core/tenancy/redirect'
@@ -45,6 +45,7 @@ export const useAuthStore = defineStore('auth', () => {
    */
   async function login(credentials: LoginCredentials): Promise<void> {
     try {
+      removeToken()
       // Fetch CSRF cookie before login
       await fetchCsrfCookie()
 
@@ -56,8 +57,16 @@ export const useAuthStore = defineStore('auth', () => {
       const { user, token: newToken } = extractData(response)
 
       // Save token and user
-      saveToken(newToken)
-      token.value = newToken
+      if (newToken) {
+        saveToken(newToken)
+        token.value = newToken
+      } else {
+        const storedToken = getToken()
+        if (storedToken) {
+          syncTokenToLocalStorage(storedToken)
+        }
+        token.value = storedToken
+      }
       centralUser.value = user
     } catch (error) {
       const apiError = error as ApiError
@@ -70,6 +79,7 @@ export const useAuthStore = defineStore('auth', () => {
    */
   async function register(data: RegisterData): Promise<void> {
     try {
+      removeToken()
       // Fetch CSRF cookie before register
       await fetchCsrfCookie()
 
@@ -81,8 +91,16 @@ export const useAuthStore = defineStore('auth', () => {
       const { user, token: newToken } = extractData(response)
 
       // Save token and user
-      saveToken(newToken)
-      token.value = newToken
+      if (newToken) {
+        saveToken(newToken)
+        token.value = newToken
+      } else {
+        const storedToken = getToken()
+        if (storedToken) {
+          syncTokenToLocalStorage(storedToken)
+        }
+        token.value = storedToken
+      }
       centralUser.value = user
     } catch (error) {
       const apiError = error as ApiError
@@ -148,6 +166,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     if (storedToken) {
       token.value = storedToken
+      syncTokenToLocalStorage(storedToken)
 
       // Try to fetch user to verify token is still valid
       try {
@@ -177,4 +196,3 @@ export const useAuthStore = defineStore('auth', () => {
     hydrateFromStorage,
   }
 })
-
