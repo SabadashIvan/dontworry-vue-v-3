@@ -7,7 +7,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { centralApi } from '@/core/api/central'
 import { extractData } from '@/core/api/client'
-import { saveToken, getToken, removeToken, clearAllCookies } from '@/core/auth/token'
+import { saveToken, getToken, removeToken, clearAllCookies, syncTokenToLocalStorage } from '@/core/auth/token'
 import { fetchCsrfCookie } from '@/core/auth/csrf'
 import type { CentralUser, ApiResponse, ApiError } from '@/core/api/types'
 import { redirectToCentral } from '@/core/tenancy/redirect'
@@ -148,6 +148,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     if (storedToken) {
       token.value = storedToken
+      syncTokenToLocalStorage(storedToken)
 
       // Try to fetch user to verify token is still valid
       try {
@@ -177,4 +178,3 @@ export const useAuthStore = defineStore('auth', () => {
     hydrateFromStorage,
   }
 })
-
