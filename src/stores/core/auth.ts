@@ -45,7 +45,6 @@ export const useAuthStore = defineStore('auth', () => {
    */
   async function login(credentials: LoginCredentials): Promise<void> {
     try {
-      removeToken()
       // Fetch CSRF cookie before login
       await fetchCsrfCookie()
 
@@ -57,16 +56,8 @@ export const useAuthStore = defineStore('auth', () => {
       const { user, token: newToken } = extractData(response)
 
       // Save token and user
-      if (newToken) {
-        saveToken(newToken)
-        token.value = newToken
-      } else {
-        const storedToken = getToken()
-        if (storedToken) {
-          syncTokenToLocalStorage(storedToken)
-        }
-        token.value = storedToken
-      }
+      saveToken(newToken)
+      token.value = newToken
       centralUser.value = user
     } catch (error) {
       const apiError = error as ApiError
@@ -79,7 +70,6 @@ export const useAuthStore = defineStore('auth', () => {
    */
   async function register(data: RegisterData): Promise<void> {
     try {
-      removeToken()
       // Fetch CSRF cookie before register
       await fetchCsrfCookie()
 
@@ -91,16 +81,8 @@ export const useAuthStore = defineStore('auth', () => {
       const { user, token: newToken } = extractData(response)
 
       // Save token and user
-      if (newToken) {
-        saveToken(newToken)
-        token.value = newToken
-      } else {
-        const storedToken = getToken()
-        if (storedToken) {
-          syncTokenToLocalStorage(storedToken)
-        }
-        token.value = storedToken
-      }
+      saveToken(newToken)
+      token.value = newToken
       centralUser.value = user
     } catch (error) {
       const apiError = error as ApiError
