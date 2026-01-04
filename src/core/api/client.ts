@@ -37,11 +37,6 @@ export function createApiClient(baseURL: string): AxiosInstance {
         config.headers[CSRF_HEADER] = csrfToken
       }
 
-      // Add Referer header (required by Sanctum for SPA)
-      if (typeof window !== 'undefined') {
-        config.headers.Referer = window.location.origin
-      }
-
       return config
     },
     (error) => {
@@ -122,4 +117,3 @@ export function createApiClient(baseURL: string): AxiosInstance {
 export function extractData<T>(response: AxiosResponse<ApiResponse<T>>): T {
   return response.data.data
 }
-
