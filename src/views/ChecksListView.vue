@@ -52,7 +52,15 @@
         <template #cell-actions="{ row }">
           <div class="actions-cell">
             <Button size="sm" variant="ghost" @click="handleEdit(row as unknown as Check)">Edit</Button>
-            <Button size="sm" variant="ghost" @click="handleRun(row as unknown as Check)">Run</Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              :loading="runningChecks.has((row as unknown as Check).id)"
+              :disabled="runningChecks.has((row as unknown as Check).id)"
+              @click="handleRun(row as unknown as Check)"
+            >
+              {{ runningChecks.has((row as unknown as Check).id) ? 'Running...' : 'Run' }}
+            </Button>
             <Button size="sm" variant="ghost" @click="handleViewHistory(row as unknown as Check)">History</Button>
             <Button size="sm" variant="danger" @click="handleDelete(row as unknown as Check)">Delete</Button>
           </div>
@@ -98,6 +106,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useChecksStore } from '@/stores/monitoring/checks'
 import { useClientsStore } from '@/stores/workspace/clients'
+import { useUiStore } from '@/stores/core/ui'
 import Container from '@/shared/ui/Container.vue'
 import PageHeader from '@/shared/ui/PageHeader.vue'
 import Card from '@/shared/ui/Card.vue'
@@ -116,11 +125,13 @@ import type { PaginatorMeta } from '@/core/api/types'
 const router = useRouter()
 const checksStore = useChecksStore()
 const clientsStore = useClientsStore()
+const uiStore = useUiStore()
 
 const showFormModal = ref(false)
 const editingCheck = ref<Check | null>(null)
 const selectedClientId = ref<number | undefined>(undefined)
 const currentPage = ref(1)
+const runningChecks = ref<Set<number>>(new Set())
 
 const loading = computed(() => checksStore.loading)
 const checks = computed(() => {
@@ -207,10 +218,27 @@ function handleEdit(check: Check) {
 }
 
 async function handleRun(check: Check) {
+  if (runningChecks.value.has(check.id)) {
+    return
+  }
+
+  runningChecks.value.add(check.id)
   try {
     await checksStore.runCheck(check.id)
+    uiStore.showToast(`Check "${check.title}" has been queued for execution`, 'success')
+
+    // Optionally refresh the list after a delay to show updated status
+    setTimeout(() => {
+      loadPage(currentPage.value)
+    }, 2000)
   } catch {
-    // Error handling is done in store
+    // Error handling is done in store, but we can show additional feedback
+    uiStore.showToast(`Failed to run check "${check.title}"`, 'error')
+  } finally {
+    // Remove from running set after a short delay to show the loading state
+    setTimeout(() => {
+      runningChecks.value.delete(check.id)
+    }, 1000)
   }
 }
 

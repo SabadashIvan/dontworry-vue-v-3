@@ -48,17 +48,21 @@ export const useCheckersStore = defineStore('monitoring/checkers', () => {
 
   /**
    * Fetch checkers list
+   * Note: If direct access to /monitoring/checkers returns 403,
+   * we can try to get checkers from existing checks
    */
   async function fetchCheckers(params?: ListParams): Promise<Checker[]> {
     loading.value = true
     error.value = null
 
     try {
+      const requestParams: Record<string, unknown> = {
+        page: params?.page || 1,
+        per_page: params?.perPage || 20,
+      }
+
       const response = await tenantApi.get<ApiResponse<Checker[]>>('/monitoring/checkers', {
-        params: {
-          page: params?.page || 1,
-          per_page: params?.perPage || 20,
-        },
+        params: requestParams,
       })
 
       const data = extractData(response)
@@ -82,10 +86,73 @@ export const useCheckersStore = defineStore('monitoring/checkers', () => {
       return data
     } catch (err: unknown) {
       const apiError = err as ApiError
+
+      // If 403, try to get checkers from existing checks as fallback
+      if (apiError.status === 403) {
+        try {
+          return await fetchCheckersFromChecks()
+        } catch {
+          // If fallback also fails, throw original error
+          error.value = apiError
+          throw apiError
+        }
+      }
+
       error.value = apiError
+
+      // For other errors, show toast
+      if (apiError.status !== 403) {
+        const uiStore = useUiStore()
+        uiStore.showToast(apiError.message || 'Failed to fetch checkers', 'error')
+      }
+
       throw apiError
     } finally {
       loading.value = false
+    }
+  }
+
+  /**
+   * Fallback: Fetch checkers from existing checks
+   * This works because checks include checker relation
+   * Note: This only works if user has existing checks
+   */
+  async function fetchCheckersFromChecks(): Promise<Checker[]> {
+    const { useChecksStore } = await import('./checks')
+    const checksStore = useChecksStore()
+
+    try {
+      // Try to fetch checks to get their checkers
+      // We need at least one check to get checkers
+      const checks = await checksStore.fetchChecks({ perPage: 1000 })
+
+      // Extract unique checkers from checks
+      const checkerMap = new Map<number, Checker>()
+      for (const check of checks) {
+        if (check.checker && !checkerMap.has(check.checker.id)) {
+          checkerMap.set(check.checker.id, check.checker)
+          byId.value[check.checker.id] = check.checker
+        }
+      }
+
+      const uniqueCheckers = Array.from(checkerMap.values())
+
+      if (uniqueCheckers.length === 0) {
+        // No checks exist yet, cannot get checkers this way
+        throw new Error('No checks available to extract checkers from')
+      }
+
+      // Cache the result
+      const listKey = getListKey({})
+      lists.value[listKey] = {
+        ids: uniqueCheckers.map((c) => c.id),
+        fetchedAt: Date.now(),
+      }
+
+      return uniqueCheckers
+    } catch (err) {
+      // If we can't get checkers from checks, re-throw to show original 403 error
+      throw err
     }
   }
 

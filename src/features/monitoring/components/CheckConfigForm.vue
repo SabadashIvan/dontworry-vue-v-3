@@ -7,6 +7,7 @@
       :label="field.label"
       :error="configErrors[key] || undefined"
       :hint="getFieldHint(field)"
+      :required="isFieldRequired(field)"
     >
       <!-- Integer field -->
       <Input
@@ -17,8 +18,9 @@
         :min="field.min"
         :max="field.max"
         :error="configErrors[key] || undefined"
-        placeholder="Enter number"
-        @update:model-value="configValues[key] = parseInt($event) || field.default || 0"
+        :placeholder="field.min !== undefined && field.max !== undefined ? `Between ${field.min} and ${field.max}` : 'Enter number'"
+        @update:model-value="handleIntegerChange(key, $event, field)"
+        @blur="validateField(key, field)"
       />
 
       <!-- Boolean field -->
@@ -47,8 +49,9 @@
         :id="`config-${key}`"
         :model-value="String(configValues[key] ?? field.default ?? '')"
         :error="configErrors[key] || undefined"
-        placeholder="Enter value"
+        :placeholder="getPlaceholder(field)"
         @update:model-value="configValues[key] = $event"
+        @blur="validateField(key, field)"
       />
     </FormField>
   </div>
@@ -63,6 +66,7 @@ import Input from '@/shared/ui/Input.vue'
 import Checkbox from '@/shared/ui/Checkbox.vue'
 import Select from '@/shared/ui/Select.vue'
 import FormField from '@/shared/ui/FormField.vue'
+import { min, max, pattern } from '@/shared/utils/validators'
 import type { ConfigField } from '@/features/monitoring/types'
 
 export interface CheckConfigFormProps {
@@ -112,10 +116,65 @@ watch(
   { deep: true }
 )
 
-const configErrors = computed(() => {
-  // Validation can be added here if needed
-  return {} as Record<string, string | null>
-})
+const configErrors = ref<Record<string, string | null>>({})
+
+function isFieldRequired(field: ConfigField): boolean {
+  // Consider a field required if it has no default value and is not boolean
+  return field.default === undefined && field.type !== 'boolean'
+}
+
+function handleIntegerChange(key: string, value: string, field: ConfigField) {
+  const numValue = value === '' ? undefined : parseInt(value, 10)
+  if (isNaN(numValue as number)) {
+    configValues.value[key] = field.default ?? 0
+  } else {
+    configValues.value[key] = numValue
+  }
+  validateField(key, field)
+}
+
+function validateField(key: string, field: ConfigField) {
+  const value = configValues.value[key]
+  const validators: Array<(val: unknown) => string | true> = []
+
+  // Add min/max validators for integer fields
+  if (field.type === 'integer') {
+    if (field.min !== undefined) {
+      validators.push(min(field.min, `${field.label} must be at least ${field.min}`))
+    }
+    if (field.max !== undefined) {
+      validators.push(max(field.max, `${field.label} must be at most ${field.max}`))
+    }
+  }
+
+  // Validate cron expression if present
+  if (field.cron && typeof value === 'string' && value.trim() !== '') {
+    const cronPattern = /^(\*|([0-9]|[1-5][0-9])|\*\/([0-9]|[1-5][0-9])) (\*|([0-9]|1[0-9]|2[0-3])|\*\/([0-9]|1[0-9]|2[0-3])) (\*|([1-9]|[12][0-9]|3[01])|\*\/([1-9]|[12][0-9]|3[01])) (\*|([1-9]|1[0-2])|\*\/([1-9]|1[0-2])) (\*|([0-6])|\*\/([0-6]))$/
+    if (!cronPattern.test(value)) {
+      configErrors.value[key] = 'Invalid cron expression format'
+      return
+    }
+  }
+
+  // Run validators
+  for (const validator of validators) {
+    const result = validator(value)
+    if (result !== true) {
+      configErrors.value[key] = result
+      return
+    }
+  }
+
+  // Clear error if validation passes
+  configErrors.value[key] = null
+}
+
+function getPlaceholder(field: ConfigField): string {
+  if (field.cron) {
+    return 'e.g., 0 */6 * * * (every 6 hours)'
+  }
+  return 'Enter value'
+}
 
 function getDefaultValue(type: string): unknown {
   switch (type) {
@@ -135,6 +194,7 @@ function getFieldHint(field: ConfigField): string | undefined {
   const hints: string[] = []
   if (field.cron) {
     hints.push(`Schedule: ${field.cron}`)
+    hints.push('Format: minute hour day month weekday (e.g., 0 */6 * * * for every 6 hours)')
   }
   if (field.timeout) {
     hints.push(`Timeout: ${field.timeout}s`)
@@ -142,7 +202,14 @@ function getFieldHint(field: ConfigField): string | undefined {
   if (field.verify_ssl !== undefined) {
     hints.push(`Verify SSL: ${field.verify_ssl ? 'Yes' : 'No'}`)
   }
-  return hints.length > 0 ? hints.join(', ') : undefined
+  if (field.min !== undefined && field.max !== undefined) {
+    hints.push(`Range: ${field.min} - ${field.max}`)
+  } else if (field.min !== undefined) {
+    hints.push(`Minimum: ${field.min}`)
+  } else if (field.max !== undefined) {
+    hints.push(`Maximum: ${field.max}`)
+  }
+  return hints.length > 0 ? hints.join(' | ') : undefined
 }
 </script>
 
