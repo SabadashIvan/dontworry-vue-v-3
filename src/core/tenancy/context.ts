@@ -4,6 +4,7 @@
  */
 
 import { getCentralDomains, isCentralHost } from './resolver'
+import { normalizeHostname } from './hostname'
 
 /**
  * Application mode
@@ -18,7 +19,7 @@ export function getAppMode(): AppMode {
     return 'central' // SSR fallback
   }
 
-  const hostname = window.location.hostname
+  const hostname = normalizeHostname(window.location.hostname)
   return isCentralHost(hostname) ? 'central' : 'tenant'
 }
 
@@ -50,11 +51,11 @@ export function getApiBaseUrl(mode: AppMode): string {
     // Central API can use dedicated host or current hostname
     const centralHost = import.meta.env.VITE_CENTRAL_HOST
     const fallbackHost = getCentralDomains()[0]
-    const host = centralHost || fallbackHost || window.location.hostname
+    const host = normalizeHostname(centralHost || fallbackHost || window.location.hostname)
     return `${scheme}://${host}:${port}${pathPrefix}`
   } else {
     // Tenant API must use current hostname (tenant subdomain)
-    const hostname = window.location.hostname
+    const hostname = normalizeHostname(window.location.hostname)
     return `${scheme}://${hostname}:${port}${pathPrefix}`
   }
 }

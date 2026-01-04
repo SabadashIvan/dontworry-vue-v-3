@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/core/auth'
 import { useTenantContextStore } from '@/stores/core/tenant-context'
 import { redirectToCentral } from '@/core/tenancy/redirect'
 import { getCentralDomains } from '@/core/tenancy/resolver'
+import { normalizeHostname } from '@/core/tenancy/hostname'
 import { tenantApi } from '@/core/api/tenant'
 import type { ApiError } from '@/core/api/types'
 
@@ -53,7 +54,7 @@ export async function requiresTenant(
   next: NavigationGuardNext
 ): Promise<void> {
   const tenantContextStore = useTenantContextStore()
-  const hostname = window.location.hostname
+  const hostname = normalizeHostname(window.location.hostname)
 
   // Debug logging
   console.log('[requiresTenant]', {
@@ -125,7 +126,7 @@ export async function requiresTenant(
         return next()
       }
 
-      const hostname = window.location.hostname
+      const hostname = normalizeHostname(window.location.hostname)
       const centralDomains = getCentralDomains()
 
       if (centralDomains.includes(hostname)) {
