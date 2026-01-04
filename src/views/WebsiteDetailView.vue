@@ -182,10 +182,7 @@ const breadcrumbs = computed<Breadcrumb[]>(() => {
 // Get website pages
 const websitePages = computed(() => {
   if (!website.value) return []
-  const listKey = JSON.stringify({ websiteId: website.value.id, page: 1, perPage: 1000 })
-  const list = pagesStore.lists[listKey]
-  if (!list) return []
-  return list.ids.map((id) => pagesStore.byId[id]).filter(Boolean)
+  return pagesStore.pagesByWebsite(website.value.id)
 })
 
 const websitePageIds = computed(() => {
@@ -247,9 +244,8 @@ async function loadChecks() {
 }
 
 async function loadPages() {
-  if (!website.value) return
   try {
-    await pagesStore.fetchPages(website.value.id, { perPage: 1000 })
+    await pagesStore.fetchPages()
   } catch {
     // Error handling is done in store
   }

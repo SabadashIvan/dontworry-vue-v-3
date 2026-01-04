@@ -159,15 +159,14 @@ const directoryOptions = computed<SelectOption[]>(() => {
     return []
   }
 
-  const directories = Object.values(directoriesStore.byId).filter(
-    (dir) => dir.client_id === selectedClientId.value
-  )
+  // Get flat list with hierarchical labels
+  const flatList = directoriesStore.flatListByClientId(selectedClientId.value)
 
   return [
     { label: 'All directories', value: undefined as unknown as number },
-    ...directories.map((directory) => ({
-      label: directory.title,
-      value: directory.id,
+    ...flatList.map((item) => ({
+      label: item.label,
+      value: item.directory.id,
     })),
   ]
 })
@@ -196,7 +195,11 @@ const columns = computed<TableColumn[]>(() => [
       const website = row as unknown as Website
       if (!website.directory_id) return '-'
       const directory = directoriesStore.byId[website.directory_id]
-      return directory?.title || `Directory ${website.directory_id}`
+      if (!directory) return `Directory ${website.directory_id}`
+
+      // Get full path and join with " > "
+      const path = directoriesStore.getDirectoryPath(website.directory_id)
+      return path.map((dir) => dir.title).join(' > ')
     },
   },
   {

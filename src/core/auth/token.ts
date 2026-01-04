@@ -98,3 +98,63 @@ export function removeToken(): void {
 export function hasToken(): boolean {
   return getToken() !== null
 }
+
+/**
+ * Clear all cookies from the current domain
+ * This function attempts to delete all cookies by setting them with Max-Age=0
+ * It tries different combinations of domain and path to ensure complete cleanup
+ */
+export function clearAllCookies(): void {
+  if (typeof document === 'undefined' || typeof window === 'undefined') {
+    return
+  }
+
+  // Get all cookies
+  const cookies = document.cookie.split(';').map((cookie) => cookie.trim())
+
+  // Get domain options
+  const domain = getCookieDomain()
+  const hostname = window.location.hostname
+
+  // Common paths to try
+  const paths = ['/', window.location.pathname]
+
+  // Domain options: without domain (host-only), with domain, with parent domain
+  const domainOptions: (string | null)[] = [null]
+  if (domain) {
+    domainOptions.push(domain)
+  }
+  if (hostname.includes('.')) {
+    const parentDomain = `.${hostname.split('.').slice(-2).join('.')}`
+    if (parentDomain !== domain) {
+      domainOptions.push(parentDomain)
+    }
+  }
+
+  // For each cookie, try to delete it with different domain/path combinations
+  for (const cookie of cookies) {
+    const [name] = cookie.split('=')
+    if (!name) continue
+
+    const decodedName = decodeURIComponent(name.trim())
+
+    // Try all combinations
+    for (const domainOption of domainOptions) {
+      for (const path of paths) {
+        const domainAttr = domainOption ? ` Domain=${domainOption};` : ''
+        const secure = window.location.protocol === 'https:' ? ' Secure;' : ''
+
+        // Try with SameSite=Lax
+        document.cookie = `${decodedName}=; Path=${path};${domainAttr} Max-Age=0; SameSite=Lax;${secure}`
+        // Try with SameSite=Strict
+        document.cookie = `${decodedName}=; Path=${path};${domainAttr} Max-Age=0; SameSite=Strict;${secure}`
+        // Try with SameSite=None (requires Secure)
+        if (window.location.protocol === 'https:') {
+          document.cookie = `${decodedName}=; Path=${path};${domainAttr} Max-Age=0; SameSite=None; Secure;`
+        }
+        // Try with Expires in the past (alternative method)
+        document.cookie = `${decodedName}=; Path=${path};${domainAttr} Expires=Thu, 01 Jan 1970 00:00:00 GMT;${secure}`
+      }
+    }
+  }
+}

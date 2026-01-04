@@ -235,6 +235,88 @@ export const useDirectoriesStore = defineStore('workspace/directories', () => {
     }
   })
 
+  /**
+   * Get full path of directory (array of all parents from root to current)
+   */
+  function getDirectoryPath(directoryId: number): Directory[] {
+    const path: Directory[] = []
+    let currentId: number | null = directoryId
+    const visited = new Set<number>()
+
+    while (currentId !== null && !visited.has(currentId)) {
+      visited.add(currentId)
+      const directory: Directory | undefined = byId.value[currentId]
+      if (!directory) break
+
+      path.unshift(directory)
+      currentId = directory.parent_id
+    }
+
+    return path
+  }
+
+  /**
+   * Get all descendants of a directory (recursively)
+   */
+  function getAllDescendants(directoryId: number): number[] {
+    const descendants: number[] = []
+    const directories = Object.values(byId.value)
+
+    function collectChildren(parentId: number) {
+      for (const dir of directories) {
+        if (dir.parent_id === parentId) {
+          descendants.push(dir.id)
+          collectChildren(dir.id)
+        }
+      }
+    }
+
+    collectChildren(directoryId)
+    return descendants
+  }
+
+  /**
+   * Get directory label with indentation based on depth
+   */
+  function getDirectoryLabel(directoryId: number, indentSize: number = 2): string {
+    const directory = byId.value[directoryId]
+    if (!directory) return ''
+
+    const path = getDirectoryPath(directoryId)
+    const depth = path.length - 1
+    const indent = ' '.repeat(depth * indentSize)
+
+    return `${indent}${directory.title}`
+  }
+
+  /**
+   * Get flat list of directories with hierarchical labels for a client
+   */
+  function flatListByClientId(clientId: number): Array<{ directory: Directory; label: string; depth: number }> {
+    const directories = Object.values(byId.value).filter((d) => d.client_id === clientId)
+    const result: Array<{ directory: Directory; label: string; depth: number }> = []
+
+    // Helper function to recursively add directories
+    function addDirectory(dir: Directory, depth: number): void {
+      const label = getDirectoryLabel(dir.id)
+      result.push({ directory: dir, label, depth })
+
+      // Find and add children
+      const children = directories.filter((d) => d.parent_id === dir.id)
+      for (const child of children) {
+        addDirectory(child, depth + 1)
+      }
+    }
+
+    // Start with root directories (parent_id === null)
+    const roots = directories.filter((d) => d.parent_id === null)
+    for (const root of roots) {
+      addDirectory(root, 0)
+    }
+
+    return result
+  }
+
   return {
     // State
     byId,
@@ -249,6 +331,11 @@ export const useDirectoriesStore = defineStore('workspace/directories', () => {
     createDirectory,
     updateDirectory,
     deleteDirectory,
+    // Utilities
+    getDirectoryPath,
+    getAllDescendants,
+    getDirectoryLabel,
+    flatListByClientId,
   }
 })
 

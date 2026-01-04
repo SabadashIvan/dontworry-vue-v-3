@@ -97,14 +97,37 @@ const directoriesStore = useDirectoriesStore()
 
 // Parent directory options (exclude current directory and its children to prevent cycles)
 const parentOptions = computed<SelectOption[]>(() => {
-  const directories = Object.values(directoriesStore.byId).filter(
-    (dir) => dir.client_id === props.clientId && dir.id !== props.directory?.id
+  let directories = Object.values(directoriesStore.byId).filter(
+    (dir) => dir.client_id === props.clientId
   )
 
-  const options: SelectOption[] = directories.map((dir) => ({
-    label: dir.title,
-    value: dir.id,
-  }))
+  // When editing, exclude current directory and all its descendants to prevent cycles
+  if (props.isEdit && props.directory) {
+    const excludedIds = new Set([props.directory.id])
+    const descendants = directoriesStore.getAllDescendants(props.directory.id)
+    descendants.forEach((id) => excludedIds.add(id))
+    directories = directories.filter((dir) => !excludedIds.has(dir.id))
+  } else {
+    // When creating, exclude nothing (all directories are valid parents)
+    directories = directories.filter((dir) => dir.id !== props.directory?.id)
+  }
+
+  // Get flat list with hierarchical labels
+  const flatList = directoriesStore.flatListByClientId(props.clientId)
+  const directoryMap = new Map(flatList.map((item) => [item.directory.id, item]))
+
+  const options: SelectOption[] = directories
+    .map((dir) => {
+      const item = directoryMap.get(dir.id)
+      if (item) {
+        return {
+          label: item.label,
+          value: dir.id,
+        } as SelectOption
+      }
+      return null
+    })
+    .filter((opt): opt is SelectOption => opt !== null)
 
   // Add "None" option if not in edit mode
   if (!props.isEdit) {

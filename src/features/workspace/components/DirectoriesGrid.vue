@@ -4,19 +4,20 @@
       <Spinner />
       <span>Loading directories...</span>
     </div>
-    <div v-else-if="rootDirectories.length === 0" class="grid-empty">
+    <div v-else-if="directoriesList.length === 0" class="grid-empty">
       <p>No directories yet. Create one to get started.</p>
     </div>
     <div v-else class="grid-container">
       <Card
-        v-for="directory in rootDirectories"
-        :key="directory.id"
+        v-for="item in directoriesList"
+        :key="item.directory.id"
         class="directory-card"
-        @click="handleDirectoryClick(directory)"
+        :style="{ marginLeft: `${item.depth * 24}px` }"
+        @click="handleDirectoryClick(item.directory)"
       >
         <div class="directory-card-content">
           <div class="directory-icon">📂</div>
-          <h3 class="directory-title">{{ directory.title }}</h3>
+          <h3 class="directory-title">{{ item.directory.title }}</h3>
         </div>
       </Card>
     </div>
@@ -46,10 +47,8 @@ const directoriesStore = useDirectoriesStore()
 
 const loading = computed(() => directoriesStore.loading)
 
-const rootDirectories = computed<Directory[]>(() => {
-  return Object.values(directoriesStore.byId).filter(
-    (dir) => dir.client_id === props.clientId && dir.parent_id === null
-  )
+const directoriesList = computed(() => {
+  return directoriesStore.flatListByClientId(props.clientId)
 })
 
 onMounted(async () => {

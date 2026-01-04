@@ -183,11 +183,33 @@ const client = computed(() => {
 
 const breadcrumbs = computed<Breadcrumb[]>(() => {
   if (!directory.value || !client.value) return []
-  return [
+
+  const breadcrumbsList: Breadcrumb[] = [
     { label: 'Organization', to: '/projects' },
     { label: client.value.title, to: `/projects/${client.value.id}` },
-    { label: directory.value.title, to: `/directories/${directory.value.id}` },
   ]
+
+  // Get full path of directory (all parents)
+  const path = directoriesStore.getDirectoryPath(directory.value.id)
+
+  // Add all parent directories to breadcrumbs
+  for (let i = 0; i < path.length - 1; i++) {
+    const dir = path[i]
+    if (dir) {
+      breadcrumbsList.push({
+        label: dir.title,
+        to: `/directories/${dir.id}`,
+      })
+    }
+  }
+
+  // Add current directory
+  breadcrumbsList.push({
+    label: directory.value.title,
+    to: `/directories/${directory.value.id}`,
+  })
+
+  return breadcrumbsList
 })
 
 const websites = computed(() => {

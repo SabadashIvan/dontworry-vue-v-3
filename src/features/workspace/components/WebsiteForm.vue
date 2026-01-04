@@ -163,19 +163,18 @@ const clientOptions = computed<SelectOption[]>(() => {
   }))
 })
 
-// Directory options (filtered by selected client)
+// Directory options (filtered by selected client) with hierarchical display
 const directoryOptions = computed<SelectOption[]>(() => {
   if (!selectedClientId.value) {
     return []
   }
 
-  const directories = Object.values(directoriesStore.byId).filter(
-    (dir) => dir.client_id === selectedClientId.value
-  )
+  // Get flat list with hierarchical labels
+  const flatList = directoriesStore.flatListByClientId(selectedClientId.value)
 
-  return directories.map((directory) => ({
-    label: directory.title,
-    value: directory.id,
+  return flatList.map((item) => ({
+    label: item.label,
+    value: item.directory.id,
   }))
 })
 

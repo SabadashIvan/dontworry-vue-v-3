@@ -34,41 +34,20 @@
         </div>
 
         <div v-if="expandedClients.has(client.id)" class="client-content">
-          <div v-if="directoriesByClient[client.id]?.length === 0" class="no-directories">
+          <div v-if="directoriesTree[client.id]?.length === 0" class="no-directories">
             <span>No directories</span>
           </div>
           <div v-else class="directories-list">
-            <div
-              v-for="directory in directoriesByClient[client.id]"
-              :key="directory.id"
-              class="directory-item"
-              :class="{ active: activeDirectoryId === directory.id }"
-            >
-              <div class="directory-header">
-                <router-link :to="`/directories/${directory.id}`" class="directory-link">
-                  <span class="directory-icon">📂</span>
-                  <span class="directory-title">{{ directory.title }}</span>
-                </router-link>
-                <span class="expand-icon" @click.stop="toggleDirectory(client.id, directory.id)">{{ expandedDirectories.has(directory.id) ? '−' : '+' }}</span>
-              </div>
-
-              <div v-if="expandedDirectories.has(directory.id)" class="directory-content">
-                <div v-if="websitesByDirectory[directory.id]?.length === 0" class="no-websites">
-                  <span>No websites</span>
-                </div>
-                <div v-else class="websites-list">
-                  <div
-                    v-for="website in websitesByDirectory[directory.id]"
-                    :key="website.id"
-                    class="website-item"
-                    @click="handleWebsiteClick(website)"
-                  >
-                    <span class="website-icon">🌐</span>
-                    <span class="website-host">{{ website.host }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <DirectoryTreeItem
+              v-for="node in directoriesTree[client.id]"
+              :key="node.id"
+              :node="node"
+              :expanded-directories="expandedDirectories"
+              :active-directory-id="activeDirectoryId"
+              :websites-by-directory="websitesByDirectory"
+              @toggle-directory="toggleDirectory"
+              @website-click="handleWebsiteClick"
+            />
           </div>
         </div>
       </div>
@@ -82,7 +61,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { useClientsStore } from '@/stores/workspace/clients'
 import { useDirectoriesStore } from '@/stores/workspace/directories'
 import { useWebsitesStore } from '@/stores/workspace/websites'
-import type { Directory, Website } from '@/features/workspace/types'
+import DirectoryTreeItem from './DirectoryTreeItem.vue'
+import type { Website } from '@/features/workspace/types'
 
 const router = useRouter()
 const route = useRoute()
@@ -96,14 +76,17 @@ const expandedDirectories = ref<Set<number>>(new Set())
 const loading = computed(() => clientsStore.loading || directoriesStore.loading || websitesStore.loading)
 const clients = computed(() => clientsStore.clients)
 
-const directoriesByClient = computed<Record<number, Directory[]>>(() => {
-  const result: Record<number, Directory[]> = {}
-  const allDirectories = Object.values(directoriesStore.byId)
+interface DirectoryNode {
+  id: number
+  title: string
+  children?: DirectoryNode[]
+}
 
+const directoriesTree = computed(() => {
+  const result: Record<number, DirectoryNode[]> = {}
   for (const client of clients.value) {
-    result[client.id] = allDirectories.filter(dir => dir.client_id === client.id && dir.parent_id === null)
+    result[client.id] = directoriesStore.treeByClientId(client.id)
   }
-
   return result
 })
 
@@ -146,9 +129,10 @@ async function toggleClient(clientId: number) {
   if (expandedClients.value.has(clientId)) {
     expandedClients.value.delete(clientId)
     // Collapse all directories for this client
-    const directories = directoriesByClient.value[clientId] || []
-    for (const dir of directories) {
-      expandedDirectories.value.delete(dir.id)
+    const tree = directoriesTree.value[clientId] || []
+    const allDirectoryIds = getAllDirectoryIds(tree)
+    for (const dirId of allDirectoryIds) {
+      expandedDirectories.value.delete(dirId)
     }
   } else {
     expandedClients.value.add(clientId)
@@ -157,7 +141,18 @@ async function toggleClient(clientId: number) {
   }
 }
 
-async function toggleDirectory(clientId: number, directoryId: number) {
+function getAllDirectoryIds(nodes: DirectoryNode[]): number[] {
+  const ids: number[] = []
+  for (const node of nodes) {
+    ids.push(node.id)
+    if (node.children && node.children.length > 0) {
+      ids.push(...getAllDirectoryIds(node.children))
+    }
+  }
+  return ids
+}
+
+async function toggleDirectory(directoryId: number) {
   if (expandedDirectories.value.has(directoryId)) {
     expandedDirectories.value.delete(directoryId)
   } else {

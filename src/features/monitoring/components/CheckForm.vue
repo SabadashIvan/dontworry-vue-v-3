@@ -275,19 +275,8 @@ watch(
       try {
         // Load websites for this client
         await websitesStore.fetchWebsites(clientId)
-        let clientWebsites = Object.values(websitesStore.byId).filter(
-          (website) => website.client_id === clientId
-        )
-
-        // If websiteId is provided, filter to only that website
-        if (props.websiteId) {
-          clientWebsites = clientWebsites.filter((website) => website.id === props.websiteId)
-        }
-
-        // Load pages for each website
-        for (const website of clientWebsites) {
-          await pagesStore.fetchPages(website.id)
-        }
+        // Load all pages (API doesn't accept website_id parameter, filter on client side)
+        await pagesStore.fetchPages()
       } finally {
         loadingPages.value = false
       }
@@ -398,18 +387,8 @@ onMounted(async () => {
     loadingPages.value = true
     try {
       await websitesStore.fetchWebsites(selectedClientId.value)
-      let clientWebsites = Object.values(websitesStore.byId).filter(
-        (website) => website.client_id === selectedClientId.value
-      )
-
-      // If websiteId is provided, filter to only that website
-      if (props.websiteId) {
-        clientWebsites = clientWebsites.filter((website) => website.id === props.websiteId)
-      }
-
-      for (const website of clientWebsites) {
-        await pagesStore.fetchPages(website.id)
-      }
+      // Load all pages (API doesn't accept website_id parameter, filter on client side)
+      await pagesStore.fetchPages()
     } finally {
       loadingPages.value = false
     }

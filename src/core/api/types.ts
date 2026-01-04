@@ -49,14 +49,23 @@ export interface CentralUser {
 }
 
 /**
+ * Avatar media structure
+ */
+export interface AvatarMedia {
+  thumb?: { url: string | null }
+  avatar?: { url: string | null }
+}
+
+/**
  * Tenant User type
  */
 export interface TenantUser {
   id: number
   central_user_id: number
-  avatar?: string
+  avatar?: string | AvatarMedia
   created_at: string
   updated_at: string
+  central_user?: CentralUser
 }
 
 /**
@@ -78,6 +87,22 @@ export interface Tenant {
   timezone?: string
   created_at: string
   updated_at: string
+}
+
+/**
+ * Invitation type (tenant-scoped)
+ */
+export interface Invitation {
+  id: number
+  email: string
+  tenant_id: number
+  invited_by?: number
+  accepted_at?: string
+  created_at: string
+  updated_at: string
+  // Optional relations that may be loaded
+  tenant?: Tenant
+  invitedBy?: CentralUser
 }
 
 /**

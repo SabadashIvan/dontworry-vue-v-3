@@ -32,7 +32,7 @@ export interface WebsitesListProps {
 
 const props = defineProps<WebsitesListProps>()
 
-const emit = defineEmits<{
+defineEmits<{
   edit: [website: Website]
   'view-pages': [website: Website]
   delete: [website: Website]
@@ -75,7 +75,11 @@ const columns = computed<TableColumn[]>(() => [
       const website = row as unknown as Website
       if (!website.directory_id) return '-'
       const directory = directoriesStore.byId[website.directory_id]
-      return directory?.title || `Directory ${website.directory_id}`
+      if (!directory) return `Directory ${website.directory_id}`
+
+      // Get full path and join with " > "
+      const path = directoriesStore.getDirectoryPath(website.directory_id)
+      return path.map((dir) => dir.title).join(' > ')
     },
   },
   {

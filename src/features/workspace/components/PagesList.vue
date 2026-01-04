@@ -24,28 +24,6 @@
       </template>
     </Table>
 
-    <div v-if="paginator && paginator.last_page > 1" class="pagination">
-      <Button
-        :disabled="paginator.current_page === 1"
-        variant="ghost"
-        size="sm"
-        @click="loadPage(paginator.current_page - 1)"
-      >
-        Previous
-      </Button>
-      <span class="pagination-info">
-        Page {{ paginator.current_page }} of {{ paginator.last_page }}
-      </span>
-      <Button
-        :disabled="paginator.current_page === paginator.last_page"
-        variant="ghost"
-        size="sm"
-        @click="loadPage(paginator.current_page + 1)"
-      >
-        Next
-      </Button>
-    </div>
-
     <Modal v-model="showFormModal" :title="formTitle" size="md">
       <PageForm
         :page="editingPage"
@@ -69,7 +47,6 @@ import Modal from '@/shared/ui/Modal.vue'
 import PageForm from './PageForm.vue'
 import type { Page } from '@/features/workspace/types'
 import type { TableColumn } from '@/shared/ui/Table.vue'
-import type { PaginatorMeta } from '@/core/api/types'
 
 export interface PagesListProps {
   websiteId: number
@@ -82,20 +59,10 @@ const websitesStore = useWebsitesStore()
 
 const showFormModal = ref(false)
 const editingPage = ref<Page | null>(null)
-const currentPage = ref(1)
 
 const loading = computed(() => pagesStore.loading)
 const pages = computed(() => {
-  const listKey = JSON.stringify({ websiteId: props.websiteId, page: currentPage.value, perPage: 10 })
-  const list = pagesStore.lists[listKey]
-  if (!list) return []
-  return list.ids.map((id) => pagesStore.byId[id]).filter(Boolean)
-})
-
-const paginator = computed<PaginatorMeta | undefined>(() => {
-  const listKey = JSON.stringify({ websiteId: props.websiteId, page: currentPage.value, perPage: 10 })
-  const list = pagesStore.lists[listKey]
-  return list?.paginator
+  return pagesStore.pagesByWebsite(props.websiteId)
 })
 
 const website = computed(() => {
@@ -137,16 +104,11 @@ const columns = computed<TableColumn[]>(() => [
 ])
 
 onMounted(async () => {
-  await loadPage(1)
+  await pagesStore.fetchPages()
   if (!website.value) {
     await websitesStore.fetchWebsite(props.websiteId)
   }
 })
-
-async function loadPage(page: number) {
-  currentPage.value = page
-  await pagesStore.fetchPages(props.websiteId, { page, perPage: 10 })
-}
 
 function handleEdit(page: Page) {
   editingPage.value = page
@@ -156,35 +118,19 @@ function handleEdit(page: Page) {
 async function handleDelete(page: Page) {
   if (confirm(`Are you sure you want to delete "${page.title}"?`)) {
     await pagesStore.deletePage(page.id)
-    await loadPage(currentPage.value)
   }
 }
 
 async function handleFormSubmit() {
   showFormModal.value = false
   editingPage.value = null
-  await loadPage(currentPage.value)
+  await pagesStore.fetchPages()
 }
 </script>
 
 <style scoped>
 .pages-list {
   width: 100%;
-}
-
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid #e0e0e0;
-}
-
-.pagination-info {
-  font-size: 14px;
-  color: #666;
 }
 </style>
 

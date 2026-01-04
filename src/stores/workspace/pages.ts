@@ -8,68 +8,37 @@ import { ref, computed } from 'vue'
 import { tenantApi } from '@/core/api/tenant'
 import { extractData } from '@/core/api/client'
 import { useUiStore } from '@/stores/core/ui'
-import type { ApiResponse, ApiError, PaginatorMeta } from '@/core/api/types'
+import type { ApiResponse, ApiError } from '@/core/api/types'
 import type { Page, PageCreateDTO, PageUpdateDTO } from '@/features/workspace/types'
 import type { Website } from '@/features/workspace/types'
-
-interface ListParams {
-  page?: number
-  perPage?: number
-}
-
-interface ListCache {
-  ids: number[]
-  paginator?: PaginatorMeta
-  fetchedAt: number
-}
 
 export const usePagesStore = defineStore('workspace/pages', () => {
   // State
   const byId = ref<Record<number, Page>>({})
-  const lists = ref<Record<string, ListCache>>({})
   const loading = ref(false)
   const error = ref<ApiError | null>(null)
+  const fetchedAt = ref<number | null>(null)
 
   /**
-   * Get list cache key
+   * Fetch all pages
+   * API doesn't accept website_id as parameter, so we fetch all pages
+   * and filter by website_id on the client side
    */
-  function getListKey(websiteId: number, params?: ListParams): string {
-    return JSON.stringify({ websiteId, ...params })
-  }
-
-  /**
-   * Fetch pages
-   */
-  async function fetchPages(websiteId: number, params?: ListParams): Promise<Page[]> {
+  async function fetchPages(): Promise<Page[]> {
     loading.value = true
     error.value = null
 
     try {
-      const response = await tenantApi.get<ApiResponse<Page[]>>('/workspace/pages', {
-        params: {
-          website_id: websiteId,
-          page: params?.page || 1,
-          per_page: params?.perPage || 10,
-        },
-      })
+      const response = await tenantApi.get<ApiResponse<Page[]>>('/workspace/pages')
 
       const data = extractData(response)
-      const paginator = response.data.meta?.paginator
 
-      // Normalize and store
-      const ids: number[] = []
+      // Store all pages in byId
       for (const page of data) {
         byId.value[page.id] = page
-        ids.push(page.id)
       }
 
-      // Cache list
-      const listKey = getListKey(websiteId, params)
-      lists.value[listKey] = {
-        ids,
-        paginator,
-        fetchedAt: Date.now(),
-      }
+      fetchedAt.value = Date.now()
 
       return data
     } catch (err: unknown) {
@@ -100,13 +69,6 @@ export const usePagesStore = defineStore('workspace/pages', () => {
 
       // Store in cache
       byId.value[page.id] = page
-
-      // Invalidate all list caches for this website
-      for (const key in lists.value) {
-        if (key.includes(`"websiteId":${data.website_id}`)) {
-          delete lists.value[key]
-        }
-      }
 
       uiStore.showToast('Page created successfully', 'success')
       return page
@@ -140,15 +102,6 @@ export const usePagesStore = defineStore('workspace/pages', () => {
       // Store in cache
       byId.value[page.id] = page
 
-      // Invalidate all list caches if website_id changed
-      if (data.website_id) {
-        for (const key in lists.value) {
-          if (key.includes(`"websiteId":${data.website_id}`)) {
-            delete lists.value[key]
-          }
-        }
-      }
-
       uiStore.showToast('Page updated successfully', 'success')
       return page
     } catch (err: unknown) {
@@ -170,20 +123,10 @@ export const usePagesStore = defineStore('workspace/pages', () => {
     const uiStore = useUiStore()
 
     try {
-      const page = byId.value[id]
       await tenantApi.delete(`/workspace/pages/${id}`)
 
       // Remove from cache
       delete byId.value[id]
-
-      // Invalidate all list caches for this website
-      if (page) {
-        for (const key in lists.value) {
-          if (key.includes(`"websiteId":${page.website_id}`)) {
-            delete lists.value[key]
-          }
-        }
-      }
 
       uiStore.showToast('Page deleted successfully', 'success')
     } catch (err: unknown) {
@@ -217,9 +160,9 @@ export const usePagesStore = defineStore('workspace/pages', () => {
   return {
     // State
     byId,
-    lists,
     loading,
     error,
+    fetchedAt,
     // Getters
     pagesByWebsite,
     // Actions

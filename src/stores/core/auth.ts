@@ -7,7 +7,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { centralApi } from '@/core/api/central'
 import { extractData } from '@/core/api/client'
-import { saveToken, getToken, removeToken } from '@/core/auth/token'
+import { saveToken, getToken, removeToken, clearAllCookies } from '@/core/auth/token'
 import { fetchCsrfCookie } from '@/core/auth/csrf'
 import type { CentralUser, ApiResponse, ApiError } from '@/core/api/types'
 import { redirectToCentral } from '@/core/tenancy/redirect'
@@ -107,6 +107,9 @@ export const useAuthStore = defineStore('auth', () => {
       removeToken()
       token.value = null
       centralUser.value = null
+
+      // Clear all cookies to prevent issues when logging in with different account
+      clearAllCookies()
 
       // Redirect to central login
       redirectToCentral('/login')
