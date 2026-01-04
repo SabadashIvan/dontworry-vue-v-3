@@ -16,6 +16,7 @@ import type {
 } from '@/features/monitoring/types'
 
 interface ListParams {
+  clientId?: number
   page?: number
   perPage?: number
 }
@@ -60,6 +61,9 @@ export const useCheckersStore = defineStore('monitoring/checkers', () => {
         page: params?.page || 1,
         per_page: params?.perPage || 20,
       }
+      if (params?.clientId) {
+        requestParams.client_id = params.clientId
+      }
 
       const response = await tenantApi.get<ApiResponse<Checker[]>>('/monitoring/checkers', {
         params: requestParams,
@@ -90,7 +94,7 @@ export const useCheckersStore = defineStore('monitoring/checkers', () => {
       // If 403, try to get checkers from existing checks as fallback
       if (apiError.status === 403) {
         try {
-          return await fetchCheckersFromChecks()
+          return await fetchCheckersFromChecks(params?.clientId)
         } catch {
           // If fallback also fails, throw original error
           error.value = apiError
@@ -117,14 +121,14 @@ export const useCheckersStore = defineStore('monitoring/checkers', () => {
    * This works because checks include checker relation
    * Note: This only works if user has existing checks
    */
-  async function fetchCheckersFromChecks(): Promise<Checker[]> {
+  async function fetchCheckersFromChecks(clientId?: number): Promise<Checker[]> {
     const { useChecksStore } = await import('./checks')
     const checksStore = useChecksStore()
 
     try {
       // Try to fetch checks to get their checkers
       // We need at least one check to get checkers
-      const checks = await checksStore.fetchChecks({ perPage: 1000 })
+      const checks = await checksStore.fetchChecks({ perPage: 1000, clientId })
 
       // Extract unique checkers from checks
       const checkerMap = new Map<number, Checker>()
@@ -301,4 +305,3 @@ export const useCheckersStore = defineStore('monitoring/checkers', () => {
     deleteChecker,
   }
 })
-
