@@ -73,6 +73,18 @@ export function saveToken(token: string): void {
 }
 
 /**
+ * Sync token to localStorage without touching cookies.
+ * Useful when token is restored from a cross-subdomain cookie.
+ */
+export function syncTokenToLocalStorage(token: string): void {
+  if (typeof localStorage === 'undefined') {
+    console.warn('localStorage is not available')
+    return
+  }
+  localStorage.setItem(TOKEN_STORAGE_KEY, token)
+}
+
+/**
  * Get token from localStorage
  */
 export function getToken(): string | null {
