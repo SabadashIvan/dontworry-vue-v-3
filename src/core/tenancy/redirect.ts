@@ -102,9 +102,10 @@ export function getCentralUrl(path: string = ''): string {
 
   // Fallback to current hostname (should be central)
   const hostname = window.location.hostname
+  const baseDomain = extractBaseDomain(hostname)
   const port = window.location.port ? `:${window.location.port}` : ''
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
-  return `${scheme}://${hostname}${port}${normalizedPath}`
+  return `${scheme}://${baseDomain}${port}${normalizedPath}`
 }
 
 /**
