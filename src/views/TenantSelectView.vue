@@ -60,9 +60,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useTenantsStore } from '@/stores/core/tenants'
 import { useTenantContextStore } from '@/stores/core/tenant-context'
 import { redirectToTenant } from '@/core/tenancy/redirect'
+import { useUiStore } from '@/stores/core/ui'
 import Container from '@/shared/ui/Container.vue'
 import PageHeader from '@/shared/ui/PageHeader.vue'
 import Card from '@/shared/ui/Card.vue'
@@ -76,6 +78,8 @@ import type { TenantCreateDTO, TenantUpdateDTO } from '@/stores/core/tenants'
 
 const tenantsStore = useTenantsStore()
 const tenantContextStore = useTenantContextStore()
+const uiStore = useUiStore()
+const route = useRoute()
 
 const showFormModal = ref(false)
 const editingTenant = ref<Tenant | null>(null)
@@ -88,14 +92,24 @@ const formTitle = computed(() => {
   return editingTenant.value ? 'Edit Workspace' : 'Create Workspace'
 })
 
-// Auto-redirect if only one tenant
+const autoRedirectBlocked = computed(() => {
+  return route.query.reason === 'tenant-unauthorized'
+})
+
+// Auto-redirect if only one tenant (unless blocked due to auth failure)
 watch(tenants, (newTenants) => {
+  if (autoRedirectBlocked.value) {
+    return
+  }
   if (newTenants.length === 1 && !showFormModal.value && newTenants[0]) {
     selectTenant(newTenants[0])
   }
 }, { immediate: true })
 
 onMounted(async () => {
+  if (autoRedirectBlocked.value) {
+    uiStore.showToast('No access to this workspace. Select another workspace or request access.', 'error')
+  }
   await loadTenants()
 })
 

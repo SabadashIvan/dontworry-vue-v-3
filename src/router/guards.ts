@@ -10,9 +10,12 @@ import { redirectToCentral } from '@/core/tenancy/redirect'
 import { getCentralDomains } from '@/core/tenancy/resolver'
 import { normalizeHostname } from '@/core/tenancy/hostname'
 import { tenantApi } from '@/core/api/tenant'
+import { getToken } from '@/core/auth/token'
 import type { ApiError } from '@/core/api/types'
 
 const API_GUARD_TIMEOUT_MS = 8000
+let validatedTenantHost: string | null = null
+let validatedToken: string | null = null
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined
@@ -115,15 +118,10 @@ export async function requiresTenant(
 
   console.log('[requiresTenant] On tenant host, validating user...')
 
-  // Skip validation if we're navigating between tenant routes
-  // This prevents infinite loops during redirects (e.g., / -> /dashboard)
-  // Also skip if we're on the same path (can happen during redirects)
-  // Skip if navigating from root to any tenant route
-  if (
-    from.path === to.path ||
-    (from.path === '/' && !to.path.startsWith('/tenants') && !to.path.startsWith('/login') && !to.path.startsWith('/register'))
-  ) {
-    console.log('[requiresTenant] Navigating within tenant routes, skipping validation to prevent loops', {
+  const token = getToken()
+  if (validatedTenantHost === hostname && validatedToken === token) {
+    console.log('[requiresTenant] Tenant already validated for host/token, skipping revalidation', {
+      hostname,
       from: from.path,
       to: to.path,
     })
@@ -135,6 +133,8 @@ export async function requiresTenant(
   try {
     await withTimeout(tenantApi.get('/users/me'), API_GUARD_TIMEOUT_MS, 'tenant user validation')
     console.log('[requiresTenant] Tenant user validation successful')
+    validatedTenantHost = hostname
+    validatedToken = token
     return next()
   } catch (err) {
     const error = err as ApiError
@@ -154,6 +154,8 @@ export async function requiresTenant(
 
     // If 401, user is not a member of this tenant
     if (error.status === 401) {
+      validatedTenantHost = null
+      validatedToken = null
       // Prevent redirect loop: if we're already trying to go to tenant-select, allow it
       if (to.path.startsWith('/tenants/select') || to.name === 'tenant-select') {
         console.log('[requiresTenant] Already redirecting to tenant-select, allowing')
@@ -166,11 +168,11 @@ export async function requiresTenant(
       if (centralDomains.includes(hostname)) {
         // Already on central, use router redirect
         console.log('[requiresTenant] Redirecting to tenant-select (on central domain)')
-        next({ name: 'tenant-select' })
+        next({ name: 'tenant-select', query: { reason: 'tenant-unauthorized', from: hostname } })
       } else {
         // Need to go to central domain
         console.log('[requiresTenant] Redirecting to central domain (tenant-select)')
-        redirectToCentral('/tenants/select')
+        redirectToCentral(`/tenants/select?reason=tenant-unauthorized&from=${encodeURIComponent(hostname)}`)
       }
       return
     }
