@@ -12,6 +12,24 @@ import { normalizeHostname } from '@/core/tenancy/hostname'
 import { tenantApi } from '@/core/api/tenant'
 import type { ApiError } from '@/core/api/types'
 
+const API_GUARD_TIMEOUT_MS = 8000
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${ms}ms`))
+    }, ms)
+  })
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeoutId) {
+      clearTimeout(timeoutId)
+    }
+  })
+}
+
 /**
  * Require authentication
  * Redirects to login if not authenticated
@@ -32,11 +50,14 @@ export async function requiresAuth(
   // If user not loaded, try to fetch
   if (!authStore.centralUser) {
     try {
-      await authStore.fetchMe()
-    } catch {
-      // Token is invalid, redirect to login
-      next({ name: 'login', query: { redirect: to.fullPath } })
-      return
+      await withTimeout(authStore.fetchMe(), API_GUARD_TIMEOUT_MS, 'auth fetch')
+    } catch (error) {
+      console.warn('[requiresAuth] Failed to fetch central user, allowing navigation', error)
+      // If token is missing, redirect to login
+      if (!authStore.token) {
+        next({ name: 'login', query: { redirect: to.fullPath } })
+        return
+      }
     }
   }
 
@@ -112,7 +133,7 @@ export async function requiresTenant(
   // Validate tenant user mapping by calling /users/me
   // This ensures the user is actually a member of this tenant
   try {
-    await tenantApi.get('/users/me')
+    await withTimeout(tenantApi.get('/users/me'), API_GUARD_TIMEOUT_MS, 'tenant user validation')
     console.log('[requiresTenant] Tenant user validation successful')
     return next()
   } catch (err) {
