@@ -20,6 +20,9 @@ export default defineConfig({
       'app.dontworry.cloud',
       'tenant1.dontworry.cloud',
       'tenant2.dontworry.cloud',
+      'tenant3.dontworry.cloud',
+      'tenant4.dontworry.cloud',
+      'tenant5.dontworry.cloud',
       // Allow all subdomains with wildcard pattern
       '.dontworry.cloud',
     ],

@@ -113,10 +113,23 @@ export async function requiresTenant(
   // This ensures the user is actually a member of this tenant
   try {
     await tenantApi.get('/users/me')
+    console.log('[requiresTenant] Tenant user validation successful')
     return next()
   } catch (err) {
     const error = err as ApiError
-    console.error('[requiresTenant] Validation error:', error)
+    const apiBaseUrl = tenantApi.defaults.baseURL
+    const currentProtocol = window.location.protocol
+    const currentHostname = window.location.hostname
+
+    console.error('[requiresTenant] Validation error:', {
+      error,
+      status: error.status,
+      message: error.message,
+      apiBaseUrl,
+      currentProtocol,
+      currentHostname,
+      path: to.path,
+    })
 
     // If 401, user is not a member of this tenant
     if (error.status === 401) {
@@ -141,15 +154,31 @@ export async function requiresTenant(
       return
     }
 
-    // For network/CORS errors, allow navigation but log
+    // For network/CORS errors, allow navigation but log with detailed info
     // This prevents infinite redirects if API is unreachable
     if (error.status === 0 || error.status >= 500) {
-      console.warn('Tenant API unreachable, allowing navigation:', error)
+      console.warn('[requiresTenant] Tenant API unreachable, allowing navigation:', {
+        status: error.status,
+        message: error.message,
+        apiBaseUrl,
+        currentProtocol,
+        currentHostname,
+        hint: error.status === 0
+          ? 'This might be a network/CORS issue or protocol mismatch (HTTP vs HTTPS). Check API URL and CORS settings.'
+          : 'Server error occurred. Check backend logs.',
+      })
       return next()
     }
 
-    // Other errors - allow navigation but log
-    console.error('Tenant user validation error:', error)
+    // Other errors - allow navigation but log with details
+    console.error('[requiresTenant] Tenant user validation error:', {
+      status: error.status,
+      message: error.message,
+      errors: error.errors,
+      apiBaseUrl,
+      currentProtocol,
+      currentHostname,
+    })
     return next()
   }
 }

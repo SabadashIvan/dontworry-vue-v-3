@@ -96,7 +96,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function logout(): Promise<void> {
     try {
       if (token.value) {
-        // Call logout endpoint
+        // Call logout endpoint while token is still available
         await centralApi.post('/users/auth/logout')
       }
     } catch (error) {
@@ -109,6 +109,7 @@ export const useAuthStore = defineStore('auth', () => {
       centralUser.value = null
 
       // Clear all cookies to prevent issues when logging in with different account
+      // This ensures clean state for new login
       clearAllCookies()
 
       // Redirect to central login

@@ -49,7 +49,9 @@ export function buildTenantUrl(subdomain: string, path: string = ''): string {
     throw new Error('Subdomain is required and cannot be undefined')
   }
 
-  const scheme = window.location.protocol.replace(':', '')
+  // Use VITE_API_SCHEME to ensure protocol matches environment settings
+  // This prevents issues when browser upgrades HTTP to HTTPS via upgrade-insecure-requests
+  const scheme = import.meta.env.VITE_API_SCHEME || 'http'
   const hostname = window.location.hostname
 
   // Try to get base domain from VITE_CENTRAL_HOST first
@@ -87,7 +89,9 @@ export function redirectToTenant(subdomain: string, path: string = ''): void {
  * Get central domain URL
  */
 export function getCentralUrl(path: string = ''): string {
-  const scheme = window.location.protocol.replace(':', '')
+  // Use VITE_API_SCHEME to ensure protocol matches environment settings
+  // This prevents issues when browser upgrades HTTP to HTTPS via upgrade-insecure-requests
+  const scheme = import.meta.env.VITE_API_SCHEME || 'http'
   const centralHost = import.meta.env.VITE_CENTRAL_HOST
 
   if (centralHost) {
