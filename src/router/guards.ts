@@ -168,11 +168,11 @@ export async function requiresTenant(
       if (centralDomains.includes(hostname)) {
         // Already on central, use router redirect
         console.log('[requiresTenant] Redirecting to tenant-select (on central domain)')
-        next({ name: 'tenant-select' })
+        next({ name: 'tenant-select', query: { reason: 'tenant-unauthorized', from: hostname } })
       } else {
         // Need to go to central domain
         console.log('[requiresTenant] Redirecting to central domain (tenant-select)')
-        redirectToCentral('/tenants/select')
+        redirectToCentral(`/tenants/select?reason=tenant-unauthorized&from=${encodeURIComponent(hostname)}`)
       }
       return
     }
