@@ -155,9 +155,12 @@ export const useAuthStore = defineStore('auth', () => {
       try {
         await fetchMe()
       } catch {
-        // Token is invalid, clear it
-        removeToken()
-        token.value = null
+        // Only clear token on explicit unauthorized response.
+        // Other failures (CORS/network) should not wipe a valid session.
+        if (!token.value) {
+          removeToken()
+          token.value = null
+        }
       }
     }
 
